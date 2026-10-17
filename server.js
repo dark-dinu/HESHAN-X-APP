@@ -16,7 +16,6 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ MongoDB Connected!'))
   .catch(err => console.error('❌ MongoDB Error:', err));
 
-// --- Schemas ---
 const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -47,7 +46,7 @@ app.use(session({
   saveUninitialized: false
 }));
 
-// --- Auth Endpoints ---
+// Auth
 app.post('/api/register', async (req, res) => {
   try {
     const { phone, name, password, dp } = req.body;
@@ -93,7 +92,7 @@ app.post('/api/profile/update', async (req, res) => {
 app.get('/api/users/search', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.json([]);
-  const users = await User.find({ phone: { $regex: phone,$options: 'i' } }).select('phone name dp');
+  const users = await User.find({ phone: { $regex: phone, $options: 'i' } }).select('phone name dp');
   res.json(users);
 });
 
@@ -119,27 +118,20 @@ app.post('/api/messages/clear', async (req, res) => {
   res.json({ success: true });
 });
 
-// --- Real-Time Socket Logic (Room Based Live Chat) ---
+// Real-Time Socket
 const onlineUsers = new Map(); // phone -> socket.id
 
-// Room name generator (numbers දෙක sort කරලා එකතු කරනවා)
-function getChatRoom(p1, p2) {
-  return [p1, p2].sort().join('_');
+function broadcastOnlineList() {
+  io.emit('online_users_list', Array.from(onlineUsers.keys()));
 }
 
 io.on('connection', (socket) => {
   socket.on('register_user', (phone) => {
     socket.phone = phone;
     onlineUsers.set(phone, socket.id);
+    broadcastOnlineList();
   });
 
-  // දෙන්නෙක් chat එකක් open කරද්දී එකම room එකට join වෙනවා
-  socket.on('join_chat', ({ myPhone, otherPhone }) => {
-    const room = getChatRoom(myPhone, otherPhone);
-    socket.join(room);
-  });
-
-  // Messages යැවීම
   socket.on('send_message', async ({ sender, receiver, text, isSaved }) => {
     if (!sender || !receiver || !text.trim()) return;
 
@@ -153,23 +145,30 @@ io.on('connection', (socket) => {
     });
     await msg.save();
 
-    const room = getChatRoom(sender, receiver);
-    // Room එකේ ඉන්න දෙන්නටම එකපාර live broadcast වෙනවා!
-    io.to(room).emit('chat_message', msg);
+    // Receiver ගේ socket id එකට direct notification යවනවා
+    const targetSocketId = onlineUsers.get(receiver);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('chat_message', msg);
+    }
+    // Sender ට emit කරනවා
+    socket.emit('chat_message', msg);
   });
 
-  // Typing
   socket.on('typing', ({ sender, receiver }) => {
-    const room = getChatRoom(sender, receiver);
-    socket.to(room).emit('user_typing', { sender });
+    const targetSocketId = onlineUsers.get(receiver);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('user_typing', { sender });
+    }
   });
 
   socket.on('stop_typing', ({ sender, receiver }) => {
-    const room = getChatRoom(sender, receiver);
-    socket.to(room).emit('user_stop_typing', { sender });
+    const targetSocketId = onlineUsers.get(receiver);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('user_stop_typing', { sender });
+    }
   });
 
-  // Voice Call Signals
+  // Calls
   socket.on('call_user', ({ callerPhone, callerName, callerDp, receiverPhone }) => {
     const targetSocketId = onlineUsers.get(receiverPhone);
     if (targetSocketId) {
@@ -198,9 +197,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (socket.phone) onlineUsers.delete(socket.phone);
+    if (socket.phone) {
+      onlineUsers.delete(socket.phone);
+      broadcastOnlineList();
+    }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Crimson Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server on ${PORT}`));
