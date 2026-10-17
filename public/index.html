@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Web Lite</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
+
+    #auth-view { background: #111b21; padding: 30px; border-radius: 12px; width: 340px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-align: center; }
+    #auth-view input { width: 100%; padding: 10px; margin: 8px 0; background: #2a3942; border: none; border-radius: 6px; color: #fff; }
+    #auth-view button { width: 100%; padding: 10px; background: #00a884; border: none; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .toggle-auth { color: #53bdeb; cursor: pointer; font-size: 13px; margin-top: 12px; display: inline-block; }
+
+    #chat-app { display: none; width: 100vw; height: 100vh; background: #111b21; overflow: hidden; }
+    @media (min-width: 900px) {
+      #chat-app { width: 95vw; height: 95vh; border-radius: 10px; display: flex; }
+    }
+
+    .sidebar { width: 360px; background: #111b21; border-right: 1px solid #222e35; display: flex; flex-direction: column; }
+    .header { height: 60px; background: #202c33; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; }
+    .header-user { display: flex; align-items: center; gap: 10px; }
+    .dp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .search-box { padding: 8px 12px; background: #111b21; }
+    .search-box input { width: 100%; padding: 8px 12px; background: #202c33; border: none; border-radius: 8px; color: #fff; outline: none; }
+    .contacts-list { flex: 1; overflow-y: auto; }
+    .contact-card { display: flex; align-items: center; gap: 12px; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #202c33; }
+    .contact-card:hover { background: #202c33; }
+
+    .chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
+    .chat-header { height: 60px; background: #202c33; display: flex; align-items: center; gap: 12px; padding: 0 15px; border-left: 1px solid #222e35; }
+    .messages-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: radial-gradient(#1f2c34 1px, transparent 1px); background-size: 20px 20px; }
+    
+    .bubble { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14.5px; position: relative; word-wrap: break-word; }
+    .sent { align-self: flex-end; background: #005c4b; color: #e9edef; }
+    .received { align-self: flex-start; background: #202c33; color: #e9edef; }
+    .meta-tag { font-size: 10px; color: #8696a0; float: right; margin-left: 10px; margin-top: 4px; display: flex; gap: 5px; align-items: center; }
+    .saved-badge { color: #ffd700; font-weight: bold; }
+    .timer-badge { color: #8696a0; }
+
+    .chat-input-bar { height: 62px; background: #202c33; display: flex; align-items: center; gap: 10px; padding: 0 15px; }
+    .chat-input-bar input[type="text"] { flex: 1; padding: 11px 15px; background: #2a3942; border: none; border-radius: 8px; color: #fff; outline: none; }
+    .save-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8696a0; cursor: pointer; user-select: none; }
+    .save-toggle input { cursor: pointer; }
+    .chat-input-bar button { padding: 10px 18px; background: #00a884; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div id="auth-view">
+    <h2 id="auth-title" style="margin-bottom: 15px;">Login</h2>
+    <input type="text" id="phone" placeholder="Phone Number (e.g. 0719845166)">
+    <input type="text" id="name" placeholder="Display Name (Registration only)" style="display:none;">
+    <input type="text" id="dp" placeholder="Profile Picture URL (Optional)" style="display:none;">
+    <input type="password" id="password" placeholder="Password">
+    <button id="auth-btn" onclick="handleAuth()">Login</button>
+    <br>
+    <span class="toggle-auth" onclick="toggleAuthMode()">Don't have an account? Register</span>
+  </div>
+
+  <div id="chat-app">
+    <div class="sidebar">
+      <div class="header">
+        <div class="header-user">
+          <img id="my-dp" class="dp" src="" alt="Profile">
+          <div>
+            <strong id="my-name"></strong>
+            <div id="my-phone" style="font-size: 11px; color: #8696a0;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search phone number..." oninput="searchContacts(this.value)">
+      </div>
+      <div class="contacts-list" id="contacts-list"></div>
+    </div>
+
+    <div class="chat-area">
+      <div class="chat-header" id="chat-header" style="display: none;">
+        <img id="target-dp" class="dp" src="" alt="Target">
+        <div>
+          <div id="target-name" style="font-weight: bold;"></div>
+          <div id="target-phone" style="font-size: 12px; color: #8696a0;"></div>
+        </div>
+      </div>
+      <div class="messages-container" id="messages-box">
+        <div style="margin: auto; color: #8696a0;">Search an account by phone number to chat</div>
+      </div>
+      <div class="chat-input-bar" id="input-bar" style="display: none;">
+        <input type="text" id="msg-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <label class="save-toggle" title="Save permanently">
+          <input type="checkbox" id="save-check"> Save
+        </label>
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let socket;
+    let currentUser = null;
+    let activeChat = null;
+    let isRegisterMode = false;
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById('auth-title').innerText = isRegisterMode ? 'Register' : 'Login';
+      document.getElementById('name').style.display = isRegisterMode ? 'block' : 'none';
+      document.getElementById('dp').style.display = isRegisterMode ? 'block' : 'none';
+      document.getElementById('auth-btn').innerText = isRegisterMode ? 'Create Account' : 'Login';
+      document.querySelector('.toggle-auth').innerText = isRegisterMode ? 'Already registered? Login' : "Don't have an account? Register";
+    }
+
+    async function handleAuth() {
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const dp = document.getElementById('dp').value.trim();
+
+      const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+      const payload = isRegisterMode ? { phone, password, name, dp } : { phone, password };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (isRegisterMode) {
+          alert('Account created! Please log in.');
+          toggleAuthMode();
+        } else {
+          currentUser = data.user;
+          initChat();
+        }
+      } else {
+        alert(data.error || 'Authentication error');
+      }
+    }
+
+    function initChat() {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('chat-app').style.display = 'flex';
+      document.getElementById('my-name').innerText = currentUser.name;
+      document.getElementById('my-phone').innerText = currentUser.phone;
+      document.getElementById('my-dp').src = currentUser.dp;
+
+      socket = io();
+      socket.emit('register_user', currentUser.phone);
+
+      socket.on('receive_message', (msg) => {
+        if (activeChat && msg.sender === activeChat.phone) {
+          appendMessage(msg.text, 'received', msg.createdAt, msg.isSaved);
+        }
+      });
+
+      socket.on('message_sent', (msg) => {
+        appendMessage(msg.text, 'sent', msg.createdAt, msg.isSaved);
+      });
+    }
+
+    async function searchContacts(query) {
+      if (!query) {
+        document.getElementById('contacts-list').innerHTML = '';
+        return;
+      }
+      const res = await fetch(`/api/users/search?phone=${encodeURIComponent(query)}`);
+      const users = await res.json();
+      
+      const list = document.getElementById('contacts-list');
+      list.innerHTML = '';
+      users.filter(u => u.phone !== currentUser.phone).forEach(user => {
+        const div = document.createElement('div');
+        div.className = 'contact-card';
+        div.innerHTML = `
+          <img class="dp" src="${user.dp}">
+          <div>
+            <strong>${user.name}</strong>
+            <div style="font-size: 12px; color: #8696a0;">${user.phone}</div>
+          </div>
+        `;
+        div.onclick = () => openChat(user);
+        list.appendChild(div);
+      });
+    }
+
+    async function openChat(user) {
+      activeChat = user;
+      document.getElementById('chat-header').style.display = 'flex';
+      document.getElementById('input-bar').style.display = 'flex';
+      document.getElementById('target-dp').src = user.dp;
+      document.getElementById('target-name').innerText = user.name;
+      document.getElementById('target-phone').innerText = user.phone;
+
+      const res = await fetch(`/api/messages/${user.phone}`);
+      const history = await res.json();
+      
+      const box = document.getElementById('messages-box');
+      box.innerHTML = '';
+      history.forEach(m => {
+        const type = m.sender === currentUser.phone ? 'sent' : 'received';
+        appendMessage(m.text, type, m.createdAt, m.isSaved);
+      });
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const saveCheck = document.getElementById('save-check');
+      const text = input.value.trim();
+      if (!text || !activeChat) return;
+
+      socket.emit('send_message', {
+        sender: currentUser.phone,
+        receiver: activeChat.phone,
+        text,
+        isSaved: saveCheck.checked
+      });
+
+      input.value = '';
+      saveCheck.checked = false;
+    }
+
+    function appendMessage(text, type, time, isSaved) {
+      const box = document.getElementById('messages-box');
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${type}`;
+      
+      const formattedTime = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const badge = isSaved 
+        ? `<span class="saved-badge" title="Saved Permanently">★</span>` 
+        : `<span class="timer-badge" title="Deletes in 10 mins">⏱ 10m</span>`;
+
+      bubble.innerHTML = `${text} <span class="meta-tag">${formattedTime} ${badge}</span>`;
+      
+      box.appendChild(bubble);
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>
