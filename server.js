@@ -10,8 +10,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- Isolated Database Connection ---
-// අනිත් data වලට බාධා නොවෙන්න වෙනම database එකක් (whatsapp_clone_db) specify කර ඇත
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/whatsapp_clone_db?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
@@ -35,7 +33,6 @@ const messageSchema = new mongoose.Schema({
   expiresAt: { type: Date, default: null }
 }, { collection: 'wa_messages' });
 
-// විනාඩි 10 න් auto delete වන TTL Index එක
 messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const User = mongoose.model('User', userSchema);
@@ -46,18 +43,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'wa_secure_session_key_2026',
+  secret: 'wa_red_black_vip_key_2026',
   resave: false,
   saveUninitialized: false
 }));
 
-// --- Authentication & User Endpoints ---
+// --- Auth & User Routes ---
 app.post('/api/register', async (req, res) => {
   try {
     const { phone, name, password, dp } = req.body;
-    if (!phone || !password || !name) {
-      return res.status(400).json({ error: 'Phone, Name, and Password are required' });
-    }
+    if (!phone || !password || !name) return res.status(400).json({ error: 'All fields required' });
 
     const existing = await User.findOne({ phone });
     if (existing) return res.status(400).json({ error: 'Phone number already registered' });
@@ -92,6 +87,24 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Settings Profile Update (Name & DP)
+app.post('/api/profile/update', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  const { name, dp } = req.body;
+  try {
+    const user = await User.findOneAndUpdate(
+      { phone: req.session.user.phone },
+      { name: name || req.session.user.name, dp: dp || req.session.user.dp },
+      { new: true }
+    );
+    req.session.user.name = user.name;
+    req.session.user.dp = user.dp;
+    res.json({ user: req.session.user });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 app.get('/api/users/search', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.json([]);
@@ -114,7 +127,7 @@ app.get('/api/messages/:otherPhone', async (req, res) => {
   res.json(messages);
 });
 
-// --- Real-time Socket.IO Logic ---
+// --- Real-time Socket.IO (Chat + WebRTC Voice Call) ---
 const onlineUsers = new Map(); // phone -> socket.id
 
 io.on('connection', (socket) => {
@@ -122,18 +135,10 @@ io.on('connection', (socket) => {
     onlineUsers.set(phone, socket.id);
   });
 
+  // Message Handling
   socket.on('send_message', async ({ sender, receiver, text, isSaved }) => {
-    // isSaved true නම් expire වෙන්නේ නෑ (null). 
-    // false නම් හරියටම විනාඩි 10 කින් (600,000 ms) Mongo එකෙන් delete වෙනවා.
     const expiresAt = isSaved ? null : new Date(Date.now() + 10 * 60 * 1000);
-
-    const msg = new Message({
-      sender,
-      receiver,
-      text,
-      isSaved,
-      expiresAt
-    });
+    const msg = new Message({ sender, receiver, text, isSaved, expiresAt });
     await msg.save();
 
     const targetSocketId = onlineUsers.get(receiver);
@@ -141,6 +146,37 @@ io.on('connection', (socket) => {
       io.to(targetSocketId).emit('receive_message', msg);
     }
     socket.emit('message_sent', msg);
+  });
+
+  // --- Voice Calling Signaling ---
+  socket.on('call_user', ({ callerPhone, callerName, callerDp, receiverPhone }) => {
+    const targetSocketId = onlineUsers.get(receiverPhone);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('incoming_call', {
+        callerPhone,
+        callerName,
+        callerDp,
+        fromSocketId: socket.id
+      });
+    } else {
+      socket.emit('call_failed', { reason: 'User is offline' });
+    }
+  });
+
+  socket.on('accept_call', ({ toSocketId }) => {
+    io.to(toSocketId).emit('call_accepted', { fromSocketId: socket.id });
+  });
+
+  socket.on('reject_call', ({ toSocketId }) => {
+    io.to(toSocketId).emit('call_rejected');
+  });
+
+  socket.on('end_call', ({ toSocketId }) => {
+    io.to(toSocketId).emit('call_ended');
+  });
+
+  socket.on('webrtc_signal', ({ toSocketId, signal }) => {
+    io.to(toSocketId).emit('webrtc_signal', { signal, fromSocketId: socket.id });
   });
 
   socket.on('disconnect', () => {
