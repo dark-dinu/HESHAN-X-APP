@@ -2,55 +2,120 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>WhatsApp Web Lite</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
-
-    #auth-view { background: #111b21; padding: 30px; border-radius: 12px; width: 340px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-align: center; }
-    #auth-view input { width: 100%; padding: 10px; margin: 8px 0; background: #2a3942; border: none; border-radius: 6px; color: #fff; }
-    #auth-view button { width: 100%; padding: 10px; background: #00a884; border: none; border-radius: 6px; color: #fff; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    .toggle-auth { color: #53bdeb; cursor: pointer; font-size: 13px; margin-top: 12px; display: inline-block; }
-
-    #chat-app { display: none; width: 100vw; height: 100vh; background: #111b21; overflow: hidden; }
-    @media (min-width: 900px) {
-      #chat-app { width: 95vw; height: 95vh; border-radius: 10px; display: flex; }
+    :root {
+      --bg-dark: #0c1317;
+      --panel-header: #202c33;
+      --sidebar-bg: #111b21;
+      --wa-green: #00a884;
+      --wa-teal: #025144;
+      --sent-bubble: #005c4b;
+      --recv-bubble: #202c33;
+      --text-primary: #e9edef;
+      --text-secondary: #8696a0;
+      --border-color: #222e35;
+      --input-bg: #2a3942;
     }
 
-    .sidebar { width: 360px; background: #111b21; border-right: 1px solid #222e35; display: flex; flex-direction: column; }
-    .header { height: 60px; background: #202c33; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; }
-    .header-user { display: flex; align-items: center; gap: 10px; }
-    .dp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .search-box { padding: 8px 12px; background: #111b21; }
-    .search-box input { width: 100%; padding: 8px 12px; background: #202c33; border: none; border-radius: 8px; color: #fff; outline: none; }
-    .contacts-list { flex: 1; overflow-y: auto; }
-    .contact-card { display: flex; align-items: center; gap: 12px; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #202c33; }
-    .contact-card:hover { background: #202c33; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg-dark); color: var(--text-primary); display: flex; justify-content: center; align-items: center; height: 100dvh; overflow: hidden; }
 
-    .chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
-    .chat-header { height: 60px; background: #202c33; display: flex; align-items: center; gap: 12px; padding: 0 15px; border-left: 1px solid #222e35; }
-    .messages-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-image: radial-gradient(#1f2c34 1px, transparent 1px); background-size: 20px 20px; }
+    /* Login & Register Modal */
+    #auth-view { background: var(--sidebar-bg); padding: 30px 25px; border-radius: 16px; width: 90%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); text-align: center; border: 1px solid var(--border-color); }
+    #auth-view .wa-logo { width: 55px; height: 55px; fill: var(--wa-green); margin-bottom: 12px; }
+    #auth-view h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary); }
+    #auth-view input { width: 100%; padding: 12px 14px; margin: 7px 0; background: var(--input-bg); border: 1px solid transparent; border-radius: 10px; color: #fff; font-size: 14.5px; outline: none; transition: 0.2s; }
+    #auth-view input:focus { border-color: var(--wa-green); }
+    #auth-view button { width: 100%; padding: 12px; background: var(--wa-green); border: none; border-radius: 10px; color: #111b21; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 15px; transition: 0.2s; }
+    #auth-view button:active { opacity: 0.85; transform: scale(0.98); }
+    .toggle-auth { color: #53bdeb; cursor: pointer; font-size: 13.5px; margin-top: 16px; display: inline-block; font-weight: 500; }
+
+    /* Main Container */
+    #chat-app { display: none; width: 100vw; height: 100dvh; background: var(--sidebar-bg); position: relative; overflow: hidden; }
     
-    .bubble { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14.5px; position: relative; word-wrap: break-word; }
-    .sent { align-self: flex-end; background: #005c4b; color: #e9edef; }
-    .received { align-self: flex-start; background: #202c33; color: #e9edef; }
-    .meta-tag { font-size: 10px; color: #8696a0; float: right; margin-left: 10px; margin-top: 4px; display: flex; gap: 5px; align-items: center; }
-    .saved-badge { color: #ffd700; font-weight: bold; }
-    .timer-badge { color: #8696a0; }
+    @media (min-width: 800px) {
+      #chat-app { width: 96vw; height: 94dvh; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid var(--border-color); display: flex; }
+    }
 
-    .chat-input-bar { height: 62px; background: #202c33; display: flex; align-items: center; gap: 10px; padding: 0 15px; }
-    .chat-input-bar input[type="text"] { flex: 1; padding: 11px 15px; background: #2a3942; border: none; border-radius: 8px; color: #fff; outline: none; }
-    .save-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8696a0; cursor: pointer; user-select: none; }
-    .save-toggle input { cursor: pointer; }
-    .chat-input-bar button { padding: 10px 18px; background: #00a884; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; }
+    /* Sidebar / Contact List */
+    .sidebar { width: 100%; height: 100%; background: var(--sidebar-bg); display: flex; flex-direction: column; z-index: 5; transition: transform 0.25s ease; }
+    .header { height: 65px; background: var(--panel-header); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+    .header-user { display: flex; align-items: center; gap: 12px; }
+    .dp { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: #2a3942; border: 1.5px solid var(--border-color); }
+    .header-user-info strong { display: block; font-size: 15px; font-weight: 600; }
+    .header-user-info span { font-size: 12px; color: var(--text-secondary); }
+
+    .search-box { padding: 10px 14px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+    .search-inner { background: var(--panel-header); border-radius: 10px; display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+    .search-inner svg { fill: var(--text-secondary); width: 18px; height: 18px; flex-shrink: 0; }
+    .search-inner input { width: 100%; padding: 10px 0; background: transparent; border: none; color: #fff; outline: none; font-size: 14px; }
+    .search-inner input::placeholder { color: var(--text-secondary); }
+
+    .contacts-list { flex: 1; overflow-y: auto; }
+    .contact-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+    .contact-card:active, .contact-card:hover { background: #202c33; }
+    .contact-details { flex: 1; overflow: hidden; }
+    .contact-details strong { display: block; font-size: 15px; font-weight: 500; color: var(--text-primary); text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+    .contact-details span { font-size: 12.5px; color: var(--text-secondary); }
+
+    /* Chat Area */
+    .chat-area { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-dark); position: absolute; top: 0; left: 0; z-index: 10; transform: translateX(100%); transition: transform 0.25s ease; }
+    .chat-area.active { transform: translateX(0); }
+
+    @media (min-width: 800px) {
+      .sidebar { width: 380px; flex-shrink: 0; }
+      .chat-area { position: relative; width: calc(100% - 380px); transform: none !important; }
+      .btn-back { display: none !important; }
+    }
+
+    .chat-header { height: 65px; background: var(--panel-header); display: flex; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+    .btn-back { background: none; border: none; padding: 6px; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; border-radius: 50%; }
+    .btn-back svg { width: 22px; height: 22px; fill: var(--text-primary); }
+
+    .messages-container { 
+      flex: 1; 
+      padding: 16px 14px; 
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+      background-color: #0b141a;
+      background-image: radial-gradient(#1f2c34 1.2px, transparent 1.2px); 
+      background-size: 22px 22px; 
+    }
+
+    .bubble { max-width: 78%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; position: relative; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .sent { align-self: flex-end; background: var(--sent-bubble); color: var(--text-primary); border-bottom-right-radius: 3px; }
+    .received { align-self: flex-start; background: var(--recv-bubble); color: var(--text-primary); border-bottom-left-radius: 3px; }
+    
+    .bubble-meta { font-size: 10.5px; color: rgba(255,255,255,0.6); float: right; margin-left: 10px; margin-top: 5px; display: inline-flex; align-items: center; gap: 4px; user-select: none; }
+    .saved-badge { color: #facc15; font-size: 11px; }
+    .timer-badge { color: #94a3b8; font-size: 10px; opacity: 0.9; }
+
+    /* Input Footer */
+    .chat-input-bar { height: 62px; background: var(--panel-header); display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex-shrink: 0; border-top: 1px solid var(--border-color); }
+    .chat-input-bar input[type="text"] { flex: 1; padding: 11px 16px; background: var(--input-bg); border: none; border-radius: 22px; color: #fff; font-size: 14.5px; outline: none; }
+    
+    .save-toggle { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-secondary); background: #182229; padding: 7px 10px; border-radius: 16px; cursor: pointer; user-select: none; }
+    .save-toggle input { accent-color: var(--wa-green); cursor: pointer; width: 14px; height: 14px; }
+    
+    .btn-send { width: 42px; height: 42px; background: var(--wa-green); border: none; border-radius: 50%; color: #111b21; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+    .btn-send svg { width: 19px; height: 19px; fill: #111b21; margin-left: 2px; }
+    .btn-send:active { transform: scale(0.92); }
+
+    .empty-state { margin: auto; text-align: center; color: var(--text-secondary); font-size: 14px; padding: 20px; line-height: 1.6; }
+    .empty-state svg { width: 60px; height: 60px; fill: #374248; margin-bottom: 12px; }
   </style>
 </head>
 <body>
 
+  <!-- Auth Screen -->
   <div id="auth-view">
-    <h2 id="auth-title" style="margin-bottom: 15px;">Login</h2>
+    <svg class="wa-logo" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2Z"/></svg>
+    <h2 id="auth-title">WhatsApp Web Login</h2>
     <input type="text" id="phone" placeholder="Phone Number (e.g. 0719845166)">
     <input type="text" id="name" placeholder="Display Name (Registration only)" style="display:none;">
     <input type="text" id="dp" placeholder="Profile Picture URL (Optional)" style="display:none;">
@@ -60,40 +125,65 @@
     <span class="toggle-auth" onclick="toggleAuthMode()">Don't have an account? Register</span>
   </div>
 
+  <!-- Chat Screen -->
   <div id="chat-app">
-    <div class="sidebar">
+    <!-- Sidebar / Contacts View -->
+    <div class="sidebar" id="sidebar-panel">
       <div class="header">
         <div class="header-user">
           <img id="my-dp" class="dp" src="" alt="Profile">
-          <div>
+          <div class="header-user-info">
             <strong id="my-name"></strong>
-            <div id="my-phone" style="font-size: 11px; color: #8696a0;"></div>
+            <span id="my-phone"></span>
           </div>
         </div>
       </div>
+      
       <div class="search-box">
-        <input type="text" id="search-input" placeholder="Search phone number..." oninput="searchContacts(this.value)">
-      </div>
-      <div class="contacts-list" id="contacts-list"></div>
-    </div>
-
-    <div class="chat-area">
-      <div class="chat-header" id="chat-header" style="display: none;">
-        <img id="target-dp" class="dp" src="" alt="Target">
-        <div>
-          <div id="target-name" style="font-weight: bold;"></div>
-          <div id="target-phone" style="font-size: 12px; color: #8696a0;"></div>
+        <div class="search-inner">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="search-input" placeholder="Search number to chat..." oninput="searchContacts(this.value)">
         </div>
       </div>
-      <div class="messages-container" id="messages-box">
-        <div style="margin: auto; color: #8696a0;">Search an account by phone number to chat</div>
+
+      <div class="contacts-list" id="contacts-list">
+        <div style="text-align: center; color: var(--text-secondary); font-size: 13px; margin-top: 30px;">
+          Type a phone number above to find users.
+        </div>
       </div>
-      <div class="chat-input-bar" id="input-bar" style="display: none;">
+    </div>
+
+    <!-- Active Chat Window -->
+    <div class="chat-area" id="chat-panel">
+      <div class="chat-header">
+        <button class="btn-back" onclick="closeChat()">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+        <img id="target-dp" class="dp" src="" alt="Chat Partner">
+        <div class="contact-details">
+          <strong id="target-name"></strong>
+          <span id="target-phone"></span>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messages-box">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+          <div>No messages yet.<br>Say Hello!</div>
+        </div>
+      </div>
+
+      <div class="chat-input-bar">
         <input type="text" id="msg-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMessage()">
-        <label class="save-toggle" title="Save permanently">
-          <input type="checkbox" id="save-check"> Save
+        
+        <label class="save-toggle" title="Save this message permanently">
+          <input type="checkbox" id="save-check"> 
+          <span>★ Save</span>
         </label>
-        <button onclick="sendMessage()">Send</button>
+        
+        <button class="btn-send" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -106,7 +196,7 @@
 
     function toggleAuthMode() {
       isRegisterMode = !isRegisterMode;
-      document.getElementById('auth-title').innerText = isRegisterMode ? 'Register' : 'Login';
+      document.getElementById('auth-title').innerText = isRegisterMode ? 'Register Account' : 'WhatsApp Web Login';
       document.getElementById('name').style.display = isRegisterMode ? 'block' : 'none';
       document.getElementById('dp').style.display = isRegisterMode ? 'block' : 'none';
       document.getElementById('auth-btn').innerText = isRegisterMode ? 'Create Account' : 'Login';
@@ -131,7 +221,7 @@
 
       if (res.ok) {
         if (isRegisterMode) {
-          alert('Account created! Please log in.');
+          alert('Account created! Now login.');
           toggleAuthMode();
         } else {
           currentUser = data.user;
@@ -164,23 +254,30 @@
     }
 
     async function searchContacts(query) {
-      if (!query) {
-        document.getElementById('contacts-list').innerHTML = '';
+      const list = document.getElementById('contacts-list');
+      if (!query.trim()) {
+        list.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 13px; margin-top: 30px;">Type a phone number above to find users.</div>`;
         return;
       }
       const res = await fetch(`/api/users/search?phone=${encodeURIComponent(query)}`);
       const users = await res.json();
       
-      const list = document.getElementById('contacts-list');
       list.innerHTML = '';
-      users.filter(u => u.phone !== currentUser.phone).forEach(user => {
+      const filtered = users.filter(u => u.phone !== currentUser.phone);
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 13px; margin-top: 30px;">No users found with this number</div>`;
+        return;
+      }
+
+      filtered.forEach(user => {
         const div = document.createElement('div');
         div.className = 'contact-card';
         div.innerHTML = `
           <img class="dp" src="${user.dp}">
-          <div>
+          <div class="contact-details">
             <strong>${user.name}</strong>
-            <div style="font-size: 12px; color: #8696a0;">${user.phone}</div>
+            <span>${user.phone}</span>
           </div>
         `;
         div.onclick = () => openChat(user);
@@ -190,21 +287,36 @@
 
     async function openChat(user) {
       activeChat = user;
-      document.getElementById('chat-header').style.display = 'flex';
-      document.getElementById('input-bar').style.display = 'flex';
       document.getElementById('target-dp').src = user.dp;
       document.getElementById('target-name').innerText = user.name;
       document.getElementById('target-phone').innerText = user.phone;
+
+      // Mobile slide into chat view
+      document.getElementById('chat-panel').classList.add('active');
 
       const res = await fetch(`/api/messages/${user.phone}`);
       const history = await res.json();
       
       const box = document.getElementById('messages-box');
       box.innerHTML = '';
-      history.forEach(m => {
-        const type = m.sender === currentUser.phone ? 'sent' : 'received';
-        appendMessage(m.text, type, m.createdAt, m.isSaved);
-      });
+      if (history.length === 0) {
+        box.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            <div>No messages yet.<br>Messages without ★ auto-delete in 10 mins.</div>
+          </div>
+        `;
+      } else {
+        history.forEach(m => {
+          const type = m.sender === currentUser.phone ? 'sent' : 'received';
+          appendMessage(m.text, type, m.createdAt, m.isSaved);
+        });
+      }
+    }
+
+    function closeChat() {
+      activeChat = null;
+      document.getElementById('chat-panel').classList.remove('active');
     }
 
     function sendMessage() {
@@ -212,6 +324,10 @@
       const saveCheck = document.getElementById('save-check');
       const text = input.value.trim();
       if (!text || !activeChat) return;
+
+      // Remove empty state if present
+      const emptyState = document.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
 
       socket.emit('send_message', {
         sender: currentUser.phone,
@@ -222,6 +338,7 @@
 
       input.value = '';
       saveCheck.checked = false;
+      input.focus();
     }
 
     function appendMessage(text, type, time, isSaved) {
@@ -231,10 +348,10 @@
       
       const formattedTime = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const badge = isSaved 
-        ? `<span class="saved-badge" title="Saved Permanently">★</span>` 
-        : `<span class="timer-badge" title="Deletes in 10 mins">⏱ 10m</span>`;
+        ? `<span class="saved-badge" title="Permanent">★</span>` 
+        : `<span class="timer-badge" title="Auto-deletes in 10m">⏱ 10m</span>`;
 
-      bubble.innerHTML = `${text} <span class="meta-tag">${formattedTime} ${badge}</span>`;
+      bubble.innerHTML = `${text} <span class="bubble-meta">${formattedTime} ${badge}</span>`;
       
       box.appendChild(bubble);
       box.scrollTop = box.scrollHeight;
