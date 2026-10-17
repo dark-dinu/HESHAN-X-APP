@@ -8,17 +8,15 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/whatsapp_clone_db?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected Successfully!'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+  .then(() => console.log('✅ MongoDB Connected!'))
+  .catch(err => console.error('❌ MongoDB Error:', err));
 
-// --- Schemas & Models ---
+// --- Schemas ---
 const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -40,17 +38,16 @@ messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const User = mongoose.model('User', userSchema);
 const Message = mongoose.model('Message', messageSchema);
 
-// --- Middleware ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'wa_red_black_vip_key_2026',
+  secret: 'crimson_vip_secret_key',
   resave: false,
   saveUninitialized: false
 }));
 
-// --- Auth Routes ---
+// --- Auth Endpoints ---
 app.post('/api/register', async (req, res) => {
   try {
     const { phone, name, password, dp } = req.body;
@@ -60,12 +57,7 @@ app.post('/api/register', async (req, res) => {
     if (existing) return res.status(400).json({ error: 'Phone already registered' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      phone,
-      name,
-      password: hashedPassword,
-      dp: dp || 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
-    });
+    const user = new User({ phone, name, password: hashedPassword, dp: dp || 'https://cdn-icons-png.flaticon.com/512/847/847969.png' });
     await user.save();
     res.json({ message: 'Success' });
   } catch (err) {
@@ -82,8 +74,7 @@ app.post('/api/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: 'Wrong password' });
 
-    req.session.user = { phone: user.phone, name: user.name, dp: user.dp };
-    res.json({ user: req.session.user });
+    res.json({ user: { phone: user.phone, name: user.name, dp: user.dp } });
   } catch (err) {
     res.status(500).json({ error: 'Login failed' });
   }
@@ -91,14 +82,8 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/profile/update', async (req, res) => {
   const { phone, name, dp } = req.body;
-  if (!phone) return res.status(400).json({ error: 'Phone required' });
   try {
-    const user = await User.findOneAndUpdate(
-      { phone },
-      { name, dp },
-      { new: true }
-    );
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await User.findOneAndUpdate({ phone }, { name, dp }, { new: true });
     res.json({ user: { phone: user.phone, name: user.name, dp: user.dp } });
   } catch (err) {
     res.status(500).json({ error: 'Update failed' });
@@ -108,7 +93,7 @@ app.post('/api/profile/update', async (req, res) => {
 app.get('/api/users/search', async (req, res) => {
   const { phone } = req.query;
   if (!phone) return res.json([]);
-  const users = await User.find({ phone: { $regex: phone, $options: 'i' } }).select('phone name dp');
+  const users = await User.find({ phone: { $regex: phone,$options: 'i' } }).select('phone name dp');
   res.json(users);
 });
 
@@ -134,52 +119,62 @@ app.post('/api/messages/clear', async (req, res) => {
   res.json({ success: true });
 });
 
-// --- Real-time Socket.IO Engine ---
+// --- Real-Time Socket Logic (Room Based Live Chat) ---
 const onlineUsers = new Map(); // phone -> socket.id
+
+// Room name generator (numbers දෙක sort කරලා එකතු කරනවා)
+function getChatRoom(p1, p2) {
+  return [p1, p2].sort().join('_');
+}
 
 io.on('connection', (socket) => {
   socket.on('register_user', (phone) => {
+    socket.phone = phone;
     onlineUsers.set(phone, socket.id);
-    io.emit('user_status', { phone, status: 'online' });
   });
 
+  // දෙන්නෙක් chat එකක් open කරද්දී එකම room එකට join වෙනවා
+  socket.on('join_chat', ({ myPhone, otherPhone }) => {
+    const room = getChatRoom(myPhone, otherPhone);
+    socket.join(room);
+  });
+
+  // Messages යැවීම
   socket.on('send_message', async ({ sender, receiver, text, isSaved }) => {
     if (!sender || !receiver || !text.trim()) return;
 
     const expiresAt = isSaved ? null : new Date(Date.now() + 10 * 60 * 1000);
-    const msg = new Message({ sender, receiver, text: text.trim(), isSaved, expiresAt });
+    const msg = new Message({
+      sender,
+      receiver,
+      text: text.trim(),
+      isSaved,
+      expiresAt
+    });
     await msg.save();
 
-    const targetSocketId = onlineUsers.get(receiver);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('receive_message', msg);
-    }
-    socket.emit('message_sent', msg);
+    const room = getChatRoom(sender, receiver);
+    // Room එකේ ඉන්න දෙන්නටම එකපාර live broadcast වෙනවා!
+    io.to(room).emit('chat_message', msg);
   });
 
+  // Typing
   socket.on('typing', ({ sender, receiver }) => {
-    const targetSocketId = onlineUsers.get(receiver);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('user_typing', { sender });
-    }
+    const room = getChatRoom(sender, receiver);
+    socket.to(room).emit('user_typing', { sender });
   });
 
   socket.on('stop_typing', ({ sender, receiver }) => {
-    const targetSocketId = onlineUsers.get(receiver);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('user_stop_typing', { sender });
-    }
+    const room = getChatRoom(sender, receiver);
+    socket.to(room).emit('user_stop_typing', { sender });
   });
 
-  // Calling Signaling
+  // Voice Call Signals
   socket.on('call_user', ({ callerPhone, callerName, callerDp, receiverPhone }) => {
     const targetSocketId = onlineUsers.get(receiverPhone);
     if (targetSocketId) {
       io.to(targetSocketId).emit('incoming_call', {
-        callerPhone,
-        callerName,
-        callerDp,
-        fromSocketId: socket.id
+        callerPhone, callerName, callerDp, fromSocketId: socket.id
       });
     } else {
       socket.emit('call_failed', { reason: 'User is offline' });
@@ -203,17 +198,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    let disconnectedPhone = null;
-    for (let [phone, id] of onlineUsers.entries()) {
-      if (id === socket.id) {
-        disconnectedPhone = phone;
-        onlineUsers.delete(phone);
-        break;
-      }
-    }
-    if (disconnectedPhone) {
-      io.emit('user_status', { phone: disconnectedPhone, status: 'offline' });
-    }
+    if (socket.phone) onlineUsers.delete(socket.phone);
   });
 });
 
