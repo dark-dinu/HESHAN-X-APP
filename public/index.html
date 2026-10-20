@@ -1,374 +1,604 @@
 <!DOCTYPE html>
-<html lang="si">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DH CHAT 🔥</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DH CHAT</title>
+    
+    <!-- PWA Settings (Android & iOS) -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#ff0037">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DH Chat">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3670/3670157.png">
+    <meta name="theme-color" content="#0b141a">
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         :root {
-            --bg-dark: #08080a;
-            --bg-card: #121216;
-            --bg-panel: #18181f;
-            --red-main: #ff0044;
-            --red-glow: rgba(255, 0, 68, 0.4);
-            --red-dark: #8b0022;
-            --text-light: #f0f0f5;
-            --text-muted: #8b8b99;
-            --border: #262633;
+            --bg-body: #08090c;
+            --bg-card: #0b141a;
+            --header-bg: #101920;
+            --tab-active: #00a884;
+            --accent-red: #e6143c;
+            --bubble-me: #005c4b;
+            --bubble-other: #1f2c34;
+            --text-main: #e9edef;
+            --text-muted: #8696a0;
+            --border-subtle: #1c272e;
         }
-        body { background: var(--bg-dark); color: var(--text-light); height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; }
 
-        /* Container */
-        .app-window { width: 100%; max-width: 480px; height: 100vh; background: var(--bg-card); display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        @media (min-width: 500px) { .app-window { height: 95vh; border-radius: 20px; border: 1px solid #ff004433; box-shadow: 0 0 30px var(--red-glow); } }
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
 
-        /* Auth Views */
-        .auth-screen { position: absolute; inset: 0; background: var(--bg-dark); z-index: 50; display: flex; flex-direction: column; justify-content: center; padding: 30px; }
-        .auth-title { font-size: 32px; font-weight: 900; color: var(--red-main); text-shadow: 0 0 15px var(--red-glow); text-align: center; margin-bottom: 5px; }
-        .auth-sub { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 30px; }
-        .input-group { margin-bottom: 14px; }
-        .input-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
-        .input-group input { width: 100%; padding: 13px 15px; border-radius: 10px; background: var(--bg-panel); border: 1px solid var(--border); color: #fff; font-size: 15px; outline: none; }
-        .input-group input:focus { border-color: var(--red-main); box-shadow: 0 0 10px var(--red-glow); }
-        .btn-red { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--red-main), var(--red-dark)); border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 15px var(--red-glow); transition: 0.2s; margin-top: 10px; }
-        .auth-toggle { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
-        .auth-toggle span { color: var(--red-main); font-weight: bold; }
+        .chat-app {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            background: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
 
-        /* Nav Header */
-        .top-navbar { height: 60px; background: var(--bg-panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 10; }
-        .menu-btn { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; }
-        .brand-logo { font-size: 20px; font-weight: 900; color: var(--red-main); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
-        .install-pwa-btn { background: #222; border: 1px solid var(--red-main); color: var(--red-main); padding: 5px 10px; font-size: 11px; border-radius: 20px; font-weight: bold; cursor: pointer; display: none; }
+        @media (min-width: 500px) {
+            .chat-app {
+                height: 94vh;
+                border-radius: 20px;
+                border: 1px solid var(--border-subtle);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            }
+        }
 
-        /* Side Navigation Drawer */
-        .nav-drawer { position: absolute; top: 0; left: -280px; width: 280px; height: 100%; background: #111116; border-right: 1px solid var(--border); z-index: 100; transition: 0.3s; padding: 20px; display: flex; flex-direction: column; }
-        .nav-drawer.open { left: 0; box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
-        .drawer-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 99; display: none; }
-        .drawer-overlay.open { display: block; }
-        .user-profile-card { text-align: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-        .user-avatar-big { width: 75px; height: 75px; border-radius: 50%; border: 2px solid var(--red-main); box-shadow: 0 0 15px var(--red-glow); margin-bottom: 10px; object-fit: cover; }
-        .drawer-item { padding: 12px; border-radius: 8px; color: var(--text-light); display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 14px; margin-bottom: 6px; }
-        .drawer-item:hover { background: var(--bg-panel); color: var(--red-main); }
-        .drawer-close { align-self: flex-end; background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; }
+        /* Top Header */
+        .app-header {
+            background: var(--header-bg);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .header-title span { color: var(--accent-red); }
+        .header-icons {
+            display: flex;
+            gap: 16px;
+            font-size: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
 
-        /* Search Section */
-        .search-area { padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); position: relative; }
-        .search-box { width: 100%; padding: 10px 14px 10px 36px; border-radius: 25px; background: var(--bg-panel); border: 1px solid var(--border); color: #fff; font-size: 14px; outline: none; }
-        .search-box:focus { border-color: var(--red-main); }
-        .search-icon { position: absolute; left: 28px; top: 22px; font-size: 14px; color: var(--text-muted); }
-        .search-results { position: absolute; top: 60px; left: 16px; right: 16px; background: #16161d; border: 1px solid var(--border); border-radius: 12px; max-height: 250px; overflow-y: auto; z-index: 20; box-shadow: 0 10px 25px rgba(0,0,0,0.8); display: none; }
-        .search-user-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #222; }
-        .search-user-row:hover { background: var(--bg-panel); }
+        /* WhatsApp Search Header */
+        .search-container {
+            padding: 8px 12px;
+            background: var(--header-bg);
+            position: relative;
+        }
+        .search-pill {
+            background: #192229;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            gap: 10px;
+            border: 1px solid var(--border-subtle);
+        }
+        .search-pill input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 14px;
+            width: 100%;
+        }
 
-        /* Active Chat Bar */
-        .active-chat-info { background: #15151c; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-        .active-user-avatar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--red-main); object-fit: cover; }
-        .ttl-badge { background: #260a12; color: #ff3b66; border: 1px solid #ff004455; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+        /* Stories Row (Inspired by WhatsApp Updates tab) */
+        .stories-row {
+            padding: 12px 14px;
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-subtle);
+            background: #0d151c;
+            scrollbar-width: none;
+        }
+        .stories-row::-webkit-scrollbar { display: none; }
+        .story-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            min-width: 58px;
+        }
+        .story-ring {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: 2px solid var(--tab-active);
+            padding: 2px;
+            position: relative;
+        }
+        .story-ring.me { border-color: var(--accent-red); }
+        .story-ring img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .story-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 58px;
+        }
 
-        /* Chat Message Area */
-        .chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: #0b0b0e; }
-        .msg-bubble { max-width: 78%; padding: 8px 13px; border-radius: 14px; font-size: 14px; line-height: 1.4; word-break: break-word; position: relative; }
-        .msg-bubble.me { align-self: flex-end; background: linear-gradient(135deg, #c40037, #75001f); color: white; border-bottom-right-radius: 2px; box-shadow: 0 2px 10px rgba(196,0,55,0.3); }
-        .msg-bubble.other { align-self: flex-start; background: #1a1a24; color: #e4e4ed; border-bottom-left-radius: 2px; border: 1px solid var(--border); }
-        .msg-bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
-        .msg-meta { font-size: 10px; opacity: 0.7; float: right; margin-left: 8px; margin-top: 4px; }
-        .ttl-notice { text-align: center; font-size: 11px; color: #ff476e; background: #1c0e12; padding: 5px 12px; border-radius: 15px; margin: 4px auto; border: 1px dashed #ff004466; width: fit-content; }
+        /* View Panels */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .hidden { display: none !important; }
 
-        /* Footer Input */
-        .chat-bottom { padding: 10px; background: var(--bg-panel); display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); }
-        .chat-input { flex: 1; background: #0f0f14; border: 1px solid var(--border); border-radius: 25px; padding: 11px 16px; color: #fff; outline: none; font-size: 14px; }
-        .chat-input:focus { border-color: var(--red-main); }
-        .icon-btn { background: none; border: none; font-size: 20px; color: #999; cursor: pointer; }
-        .icon-btn:hover { color: var(--red-main); }
-        .send-round-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--red-main); border: none; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 12px var(--red-glow); }
-        
-        /* Modal Profile Edit */
-        .modal { position: absolute; inset: 0; background: rgba(0,0,0,0.85); z-index: 110; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-box { width: 100%; max-width: 350px; background: var(--bg-card); border: 1px solid var(--red-main); border-radius: 15px; padding: 20px; }
+        /* Search Results List */
+        .users-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .user-list-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .user-list-item:hover { background: #131c24; }
+        .user-list-item img {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Active Chat Workspace */
+        .chat-view {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #0b141a url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') repeat;
+            background-blend-mode: overlay;
+        }
+        .chat-topbar {
+            background: var(--header-bg);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .chat-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .chat-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 7px 10px 5px;
+            border-radius: 8px;
+            font-size: 14px;
+            position: relative;
+            word-break: break-word;
+            animation: bubbleAnim 0.25s ease-out;
+        }
+        @keyframes bubbleAnim {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .bubble.me {
+            align-self: flex-end;
+            background: var(--bubble-me);
+            color: #e9edef;
+            border-top-right-radius: 2px;
+        }
+        .bubble.other {
+            align-self: flex-start;
+            background: var(--bubble-other);
+            color: #d1d7db;
+            border-top-left-radius: 2px;
+        }
+        .bubble img {
+            max-width: 100%;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        .bubble-meta {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.55);
+            float: right;
+            margin-left: 8px;
+            margin-top: 4px;
+        }
+
+        /* Input Controls */
+        .chat-input-bar {
+            padding: 8px 10px;
+            background: var(--header-bg);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .msg-input-box {
+            flex: 1;
+            background: #202c33;
+            border: none;
+            outline: none;
+            border-radius: 20px;
+            padding: 10px 16px;
+            color: #fff;
+            font-size: 14px;
+        }
+        .action-circle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            border: none;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(230, 20, 60, 0.3);
+        }
+
+        /* Profile / Settings Tab */
+        .profile-container {
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dp-wrapper {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+        }
+        .dp-wrapper img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent-red);
+        }
+        .dp-badge {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: var(--accent-red);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            font-size: 16px;
+        }
+
+        /* Bottom Tab Navigation (Exact WhatsApp copy) */
+        .bottom-nav {
+            height: 60px;
+            background: var(--header-bg);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .nav-item.active {
+            color: var(--tab-active);
+            font-weight: 600;
+        }
+        .nav-icon {
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
 
-<div class="app-window">
-    <!-- Auth Screen -->
-    <div class="auth-screen" id="authScreen">
-        <h1 class="auth-title">DH CHAT 🔥</h1>
-        <p class="auth-sub" id="authSubtitle">Red & Black Private Messaging</p>
-        
-        <div class="input-group" id="nameGroup">
-            <label>ඔබගේ නම (Display Name)</label>
-            <input type="text" id="authName" placeholder="උදා: Dinidu Heshan">
-        </div>
-        <div class="input-group">
-            <label>දුරකථන අංකය (Phone Number)</label>
-            <input type="tel" id="authPhone" placeholder="උදා: 0712345678">
-        </div>
-        <div class="input-group">
-            <label>මුරපදය (Password)</label>
-            <input type="password" id="authPassword" placeholder="••••••••">
-        </div>
-        <button class="btn-red" id="authBtn" onclick="handleAuth()">Register වෙන්න</button>
-        <div class="auth-toggle" onclick="toggleAuthMode()">
-            <span id="authToggleText">දැනටමත් Account එකක් තියෙනවද? Login වෙන්න</span>
+<div class="chat-app">
+    <!-- Top Bar -->
+    <div class="app-header">
+        <div class="header-title">DH <span>CHAT</span></div>
+        <div class="header-icons">
+            <span onclick="triggerInstall()" title="Install App">📲</span>
+            <span onclick="switchTab('profileTab')" title="Settings">⚙️</span>
         </div>
     </div>
 
-    <!-- Nav Bar -->
-    <div class="top-navbar">
-        <button class="menu-btn" onclick="openDrawer()">☰</button>
-        <div class="brand-logo">DH <span>CHAT</span></div>
-        <button class="install-pwa-btn" id="installBtn">📲 App එක දාගන්න</button>
-    </div>
-
-    <!-- Drawer Overlay & Menu -->
-    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-    <div class="nav-drawer" id="navDrawer">
-        <button class="drawer-close" onclick="closeDrawer()">×</button>
-        <div class="user-profile-card">
-            <img id="myAvatar" class="user-avatar-big" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Profile">
-            <h3 id="myName">User</h3>
-            <span id="myPhone" style="font-size: 12px; color: var(--red-main);">07xxxxxxxx</span>
-            <p id="myBio" style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Using DH CHAT</p>
-        </div>
-        <div class="drawer-item" onclick="openProfileModal()">✏️ Profile එක Edit කරන්න</div>
-        <div class="drawer-item" onclick="installAppPrompt()">📲 Phone එකට App එක Install කරන්න</div>
-        <div class="drawer-item" style="color: #ff3355; margin-top: auto;" onclick="logout()">🚪 Logout වෙන්න</div>
-    </div>
-
-    <!-- Search Bar -->
-    <div class="search-area">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="searchUser" class="search-box" placeholder="නම හෝ Phone Number ගහලා Search කරන්න..." oninput="searchUsers(this.value)">
-        <div class="search-results" id="searchResults"></div>
-    </div>
-
-    <!-- Active Chat Header -->
-    <div class="active-chat-info">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <img id="chatPartnerAvatar" class="active-user-avatar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-            <div>
-                <h4 id="chatPartnerName" style="font-size: 14px;">කෙනෙක් තෝරන්න</h4>
-                <span id="chatPartnerStatus" style="font-size: 11px; color: var(--text-muted);">නැතහොත් Search කරන්න</span>
+    <!-- TAB 1: CHATS (Home) -->
+    <div class="tab-content" id="chatsTab">
+        <!-- Search -->
+        <div class="search-container">
+            <div class="search-pill">
+                <span>🔍</span>
+                <input type="text" id="userSearchInput" placeholder="Search by name or phone..." oninput="handleSearch(this.value)">
             </div>
         </div>
-        <div class="ttl-badge">⏳ 10 min Auto-Delete</div>
+
+        <!-- WhatsApp-style Status Row -->
+        <div class="stories-row">
+            <div class="story-node" onclick="switchTab('profileTab')">
+                <div class="story-ring me">
+                    <img id="myStoryAvatar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                </div>
+                <div class="story-name">My Status</div>
+            </div>
+            <div class="story-node" onclick="alert('Ephemeral status feature coming soon!')">
+                <div class="story-ring">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135768.png">
+                </div>
+                <div class="story-name">Updates</div>
+            </div>
+        </div>
+
+        <!-- Search Results / Active Conversation list -->
+        <div class="users-list" id="usersFeed">
+            <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                Type a friend's phone number or name above to start messaging.
+            </div>
+        </div>
     </div>
 
-    <!-- Messages -->
-    <div class="chat-body" id="chatBody">
-        <div class="ttl-notice">🔥 සියලුම චැට් විනාඩි 10 කින් ස්වයංක්‍රීයව මැකී යයි (RAM Safe)</div>
+    <!-- TAB 2: ACTIVE PRIVATE CHAT -->
+    <div class="tab-content hidden" id="chatRoomTab">
+        <div class="chat-view">
+            <div class="chat-topbar">
+                <button class="back-btn" onclick="exitChat()">←</button>
+                <img id="activePartnerImg" class="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                <div style="flex: 1;">
+                    <h4 id="activePartnerName" style="font-size: 14px; font-weight: 600;">Contact</h4>
+                    <span id="activePartnerPhone" style="font-size: 11px; color: var(--text-muted);">Online</span>
+                </div>
+                <span style="font-size: 10px; color: #ff476e; background: #260a12; padding: 3px 8px; border-radius: 12px; border: 1px solid #ff004455;">10m Auto-Delete</span>
+            </div>
+
+            <div class="chat-feed" id="chatFeed"></div>
+
+            <div class="chat-input-bar">
+                <input type="file" id="chatImageInput" accept="image/*" style="display: none;" onchange="sendChatImage(event)">
+                <button style="background:none; border:none; font-size: 20px; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chatImageInput').click()">📷</button>
+                <input type="text" id="chatTextInput" class="msg-input-box" placeholder="Message..." autocomplete="off">
+                <button class="action-circle-btn" onclick="sendTextMessage()">➤</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Footer -->
-    <div class="chat-bottom">
-        <input type="file" id="imgUpload" accept="image/*" style="display: none;" onchange="sendImage(event)">
-        <button class="icon-btn" onclick="document.getElementById('imgUpload').click()">📷</button>
-        <button class="icon-btn" onclick="addEmoji('🔥')">🔥</button>
-        <input type="text" id="msgText" class="chat-input" placeholder="Message එකක් ලියන්න..." autocomplete="off">
-        <button class="send-round-btn" onclick="sendTextMessage()">➤</button>
+    <!-- TAB 3: PROFILE & SETTINGS -->
+    <div class="tab-content hidden" id="profileTab">
+        <div class="profile-container">
+            <div class="dp-wrapper">
+                <img id="profileDpImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                <input type="file" id="dpPicker" accept="image/*" style="display: none;" onchange="handleDpUpload(event)">
+                <div class="dp-badge" onclick="document.getElementById('dpPicker').click()" title="Choose Photo">📷</div>
+            </div>
+            
+            <h3 id="profileNameDisplay" style="margin-bottom: 4px;">User</h3>
+            <p id="profilePhoneDisplay" style="color: var(--accent-red); font-size: 13px; margin-bottom: 24px;">Phone</p>
+
+            <div style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px;">
+                <button class="action-circle-btn" style="width: 100%; border-radius: 10px; height: 42px; background: #192229; border: 1px solid var(--border-subtle);" onclick="triggerInstall()">📲 Install App on Phone</button>
+                <button class="action-circle-btn" style="width: 100%; border-radius: 10px; height: 42px; background: #260a12; border: 1px solid #ff004466;" onclick="logout()">Log Out</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Profile Edit Modal -->
-    <div class="modal" id="profileModal">
-        <div class="modal-box">
-            <h3 style="margin-bottom: 15px; color: var(--red-main);">Edit Profile</h3>
-            <div class="input-group">
-                <label>නම (Name)</label>
-                <input type="text" id="editName">
-            </div>
-            <div class="input-group">
-                <label>Bio (Status)</label>
-                <input type="text" id="editBio">
-            </div>
-            <div class="input-group">
-                <label>Avatar URL (Image Link)</label>
-                <input type="text" id="editAvatar">
-            </div>
-            <button class="btn-red" onclick="saveProfile()">Save Profile</button>
-            <button style="width: 100%; background: none; border: none; color: #888; margin-top: 10px; cursor: pointer;" onclick="closeProfileModal()">Cancel</button>
+    <!-- WhatsApp Bottom Navigation Bar -->
+    <div class="bottom-nav">
+        <div class="nav-item active" id="navChats" onclick="switchTab('chatsTab')">
+            <div class="nav-icon">💬</div>
+            <div>Chats</div>
+        </div>
+        <div class="nav-item" id="navUpdates" onclick="alert('Disappearing updates are enabled by default!')">
+            <div class="nav-icon">⭕</div>
+            <div>Updates</div>
+        </div>
+        <div class="nav-item" id="navProfile" onclick="switchTab('profileTab')">
+            <div class="nav-icon">👤</div>
+            <div>Profile</div>
         </div>
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    let isLoginMode = false;
-    let currentUser = JSON.parse(localStorage.getItem('dh_user') || 'null');
-    let activeChatUser = null;
-    const socket = io();
+    const user = JSON.parse(localStorage.getItem('dh_user') || 'null');
+    if (!user) {
+        window.location.replace('/login.html');
+    }
 
-    // PWA Service Worker
+    const socket = io();
+    let currentPartner = null;
+    let deferredPrompt;
+
+    // Service Worker for Android/iOS PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');
     }
-
-    let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        document.getElementById('installBtn').style.display = 'block';
     });
 
-    function installAppPrompt() {
+    function triggerInstall() {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
         } else {
-            alert("Chrome menu එකෙන් (තිත් 3) 'Install app' හෝ 'Add to Home screen' ලබා දෙන්න!");
-        }
-    }
-    document.getElementById('installBtn').addEventListener('click', installAppPrompt);
-
-    // Initial Auth State
-    if (currentUser) {
-        document.getElementById('authScreen').style.display = 'none';
-        initApp();
-    }
-
-    function toggleAuthMode() {
-        isLoginMode = !isLoginMode;
-        document.getElementById('nameGroup').style.display = isLoginMode ? 'none' : 'block';
-        document.getElementById('authBtn').innerText = isLoginMode ? 'Login වෙන්න' : 'Register වෙන්න';
-        document.getElementById('authSubtitle').innerText = isLoginMode ? 'Login to DH CHAT' : 'Create an Account';
-        document.getElementById('authToggleText').innerHTML = isLoginMode 
-            ? 'ගිණුමක් නැද්ද? <span>Register වෙන්න</span>' 
-            : 'දැනටමත් Account එකක් තියෙනවද? <span>Login වෙන්න</span>';
-    }
-
-    async function handleAuth() {
-        const phone = document.getElementById('authPhone').value.trim();
-        const password = document.getElementById('authPassword').value;
-        const name = document.getElementById('authName').value.trim();
-
-        const endpoint = isLoginMode ? '/api/login' : '/api/register';
-        const payload = isLoginMode ? { phone, password } : { name, phone, password };
-
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (!res.ok) return alert(data.error || 'දෝෂයක් සිදුවිය!');
-
-            currentUser = data.user;
-            localStorage.setItem('dh_user', JSON.stringify(currentUser));
-            document.getElementById('authScreen').style.display = 'none';
-            initApp();
-        } catch (err) {
-            alert('Server error!');
+            alert('To install:\n- On Android: Chrome Menu (⋮) -> Install App\n- On iOS: Safari Share -> Add to Home Screen');
         }
     }
 
-    function initApp() {
-        document.getElementById('myName').innerText = currentUser.name;
-        document.getElementById('myPhone').innerText = currentUser.phone;
-        document.getElementById('myBio').innerText = currentUser.bio;
-        document.getElementById('myAvatar').src = currentUser.avatar;
+    // App Init
+    function init() {
+        document.getElementById('myStoryAvatar').src = user.avatar;
+        document.getElementById('profileDpImg').src = user.avatar;
+        document.getElementById('profileNameDisplay').innerText = user.name;
+        document.getElementById('profilePhoneDisplay').innerText = user.phone;
 
-        socket.emit('register-socket', currentUser.phone);
+        socket.emit('register-socket', user.phone);
+    }
+    init();
+
+    // Tab Navigation
+    function switchTab(tabId) {
+        document.getElementById('chatsTab').classList.add('hidden');
+        document.getElementById('chatRoomTab').classList.add('hidden');
+        document.getElementById('profileTab').classList.add('hidden');
+
+        document.getElementById('navChats').classList.remove('active');
+        document.getElementById('navProfile').classList.remove('active');
+
+        document.getElementById(tabId).classList.remove('hidden');
+
+        if (tabId === 'chatsTab') document.getElementById('navChats').classList.add('active');
+        if (tabId === 'profileTab') document.getElementById('navProfile').classList.add('active');
     }
 
-    // Drawer Controls
-    function openDrawer() {
-        document.getElementById('navDrawer').classList.add('open');
-        document.getElementById('drawerOverlay').classList.add('open');
-    }
-    function closeDrawer() {
-        document.getElementById('navDrawer').classList.remove('open');
-        document.getElementById('drawerOverlay').classList.remove('open');
+    function exitChat() {
+        currentPartner = null;
+        switchTab('chatsTab');
     }
 
-    function logout() {
-        localStorage.removeItem('dh_user');
-        location.reload();
-    }
+    // User Search
+    let searchDebounce;
+    async function handleSearch(q) {
+        clearTimeout(searchDebounce);
+        const container = document.getElementById('usersFeed');
+        if (!q.trim()) {
+            container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">Type a friend's phone number or name above to start messaging.</div>`;
+            return;
+        }
 
-    // Search Users
-    let searchTimer;
-    async function searchUsers(q) {
-        clearTimeout(searchTimer);
-        const resBox = document.getElementById('searchResults');
-        if (!q.trim()) { resBox.style.display = 'none'; return; }
-
-        searchTimer = setTimeout(async () => {
+        searchDebounce = setTimeout(async () => {
             const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
             const users = await res.json();
-            resBox.innerHTML = '';
-            
-            const filtered = users.filter(u => u.phone !== currentUser.phone);
-            if (filtered.length === 0) {
-                resBox.innerHTML = '<div style="padding: 12px; font-size:12px; color:#888;">කෙනෙක් හමු නොවුණි!</div>';
-            } else {
-                filtered.forEach(u => {
-                    const row = document.createElement('div');
-                    row.className = 'search-user-row';
-                    row.innerHTML = `
-                        <img src="${u.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;">
-                        <div>
-                            <div style="font-weight:bold; font-size:13px; color:#fff;">${u.name}</div>
-                            <div style="font-size:11px; color:#ff0044;">${u.phone}</div>
-                        </div>
-                    `;
-                    row.onclick = () => selectChatPartner(u);
-                    resBox.appendChild(row);
-                });
+            container.innerHTML = '';
+
+            const list = users.filter(u => u.phone !== user.phone);
+            if (list.length === 0) {
+                container.innerHTML = `<div style="padding: 20px; text-align:center; color: var(--text-muted); font-size: 13px;">No user found</div>`;
+                return;
             }
-            resBox.style.display = 'block';
+
+            list.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'user-list-item';
+                row.innerHTML = `
+                    <img src="${item.avatar}">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">${item.name}</div>
+                        <div style="font-size: 12px; color: var(--accent-red);">${item.phone}</div>
+                    </div>
+                `;
+                row.onclick = () => openChat(item);
+                container.appendChild(row);
+            });
         }, 300);
     }
 
-    // Select Active Chat
-    async function selectChatPartner(user) {
-        activeChatUser = user;
-        document.getElementById('searchResults').style.display = 'none';
-        document.getElementById('searchUser').value = '';
+    // Open Chat & Load Messages
+    async function openChat(partner) {
+        currentPartner = partner;
+        document.getElementById('activePartnerName').innerText = partner.name;
+        document.getElementById('activePartnerPhone').innerText = partner.phone;
+        document.getElementById('activePartnerImg').src = partner.avatar;
 
-        document.getElementById('chatPartnerName').innerText = user.name;
-        document.getElementById('chatPartnerStatus').innerText = user.phone;
-        document.getElementById('chatPartnerAvatar').src = user.avatar;
+        switchTab('chatRoomTab');
 
-        // Load History
-        const res = await fetch(`/api/messages?user1=${currentUser.phone}&user2=${user.phone}`);
+        const feed = document.getElementById('chatFeed');
+        feed.innerHTML = '';
+
+        const res = await fetch(`/api/messages?user1=${user.phone}&user2=${partner.phone}`);
         const messages = await res.json();
-        const chatBody = document.getElementById('chatBody');
-        chatBody.innerHTML = '<div class="ttl-notice">🔥 සියලුම චැට් විනාඩි 10 කින් ස්වයංක්‍රීයව මැකී යයි (RAM Safe)</div>';
-        
         messages.forEach(m => renderBubble(m));
-        chatBody.scrollTop = chatBody.scrollHeight;
+        feed.scrollTop = feed.scrollHeight;
     }
 
-    // Send Messages
+    // Send Text Message
     function sendTextMessage() {
-        if (!activeChatUser) return alert('කරුණාකර කලින් කෙනෙක් Search කර තෝරාගන්න!');
-        const text = document.getElementById('msgText').value.trim();
-        if (!text) return;
+        const input = document.getElementById('chatTextInput');
+        const text = input.value.trim();
+        if (!text || !currentPartner) return;
 
         socket.emit('private-message', {
-            from: currentUser.phone,
-            to: activeChatUser.phone,
+            from: user.phone,
+            to: currentPartner.phone,
             text: text
         });
-        document.getElementById('msgText').value = '';
+        input.value = '';
     }
 
-    document.getElementById('msgText').addEventListener('keydown', (e) => {
+    document.getElementById('chatTextInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') sendTextMessage();
     });
 
-    function sendImage(e) {
-        if (!activeChatUser) return alert('කරුණාකර කලින් කෙනෙක් තෝරාගන්න!');
+    // Send Chat Image
+    function sendChatImage(e) {
         const file = e.target.files[0];
-        if (file) {
+        if (file && currentPartner) {
             const reader = new FileReader();
             reader.onload = () => {
                 socket.emit('private-message', {
-                    from: currentUser.phone,
-                    to: activeChatUser.phone,
+                    from: user.phone,
+                    to: currentPartner.phone,
                     image: reader.result
                 });
             };
@@ -376,68 +606,70 @@
         }
     }
 
-    function addEmoji(em) {
-        document.getElementById('msgText').value += em;
-    }
-
-    // Receive Realtime
+    // Real-Time Socket Listeners
     socket.on('message-sent', (msg) => {
         renderBubble(msg);
     });
 
     socket.on('receive-private-message', (msg) => {
-        if (activeChatUser && msg.from === activeChatUser.phone) {
+        if (currentPartner && msg.from === currentPartner.phone) {
             renderBubble(msg);
         } else {
-            // Notification if in another chat
-            alert(`නව පණිවිඩයක් ලැබුණා: ${msg.from}`);
+            alert(`New message from ${msg.from}`);
         }
     });
 
     function renderBubble(msg) {
-        const isMe = msg.from === currentUser.phone;
+        const isMe = msg.from === user.phone;
         const div = document.createElement('div');
-        div.className = `msg-bubble ${isMe ? 'me' : 'other'}`;
+        div.className = `bubble ${isMe ? 'me' : 'other'}`;
         
-        let content = '';
-        if (msg.text) content += `<div>${msg.text}</div>`;
-        if (msg.image) content += `<img src="${msg.image}">`;
-        content += `<span class="msg-meta">${msg.time}</span>`;
+        let body = '';
+        if (msg.text) body += `<div>${msg.text}</div>`;
+        if (msg.image) body += `<img src="${msg.image}">`;
+        body += `<span class="bubble-meta">${msg.time}</span>`;
 
-        div.innerHTML = content;
-        const box = document.getElementById('chatBody');
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        div.innerHTML = body;
+        const feed = document.getElementById('chatFeed');
+        feed.appendChild(div);
+        feed.scrollTop = feed.scrollHeight;
     }
 
-    // Profile Modal
-    function openProfileModal() {
-        closeDrawer();
-        document.getElementById('editName').value = currentUser.name;
-        document.getElementById('editBio').value = currentUser.bio;
-        document.getElementById('editAvatar').value = currentUser.avatar;
-        document.getElementById('profileModal').style.display = 'flex';
-    }
-    function closeProfileModal() {
-        document.getElementById('profileModal').style.display = 'none';
-    }
-    async function saveProfile() {
-        const name = document.getElementById('editName').value;
-        const bio = document.getElementById('editBio').value;
-        const avatar = document.getElementById('editAvatar').value;
+    // DP Image Picker & File Upload
+    function handleDpUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        const res = await fetch('/api/profile/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: currentUser.phone, name, bio, avatar })
-        });
-        const data = await res.json();
-        if (data.success) {
-            currentUser = data.user;
-            localStorage.setItem('dh_user', JSON.stringify(currentUser));
-            initApp();
-            closeProfileModal();
-        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const base64Image = reader.result;
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: user.phone,
+                        name: user.name,
+                        avatar: base64Image
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    user.avatar = base64Image;
+                    localStorage.setItem('dh_user', JSON.stringify(user));
+                    init();
+                    alert('Profile photo updated successfully!');
+                }
+            } catch (err) {
+                alert('Failed to upload image');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function logout() {
+        localStorage.removeItem('dh_user');
+        window.location.replace('/login.html');
     }
 </script>
 </body>
