@@ -61,7 +61,7 @@ body {
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .header-icons {
@@ -73,7 +73,7 @@ body {
   cursor: pointer;
 }
 
-/* Dropdown Menu (Screenshot 3) */
+/* Dropdown Menu */
 .menu-popup {
   position: absolute;
   top: 55px;
@@ -87,7 +87,6 @@ body {
   min-width: 180px;
   animation: fadeIn 0.15s ease-out;
 }
-
 .menu-popup.show { display: block; }
 
 .menu-item {
@@ -126,7 +125,6 @@ body {
   border: 2px solid var(--accent-green);
   position: relative;
 }
-
 .status-ring.my-ring { border-color: var(--accent-red); }
 
 .status-ring img {
@@ -178,9 +176,7 @@ body {
   object-fit: cover;
 }
 
-.chat-row-content {
-  flex: 1;
-}
+.chat-row-content { flex: 1; }
 
 .chat-row-title {
   font-size: 15px;
@@ -205,7 +201,7 @@ body {
   max-width: 280px;
 }
 
-/* Bottom Navigation (Screenshots 1, 3) */
+/* Bottom Navigation */
 .bottom-tabs {
   height: 62px;
   background: var(--bg-top);
