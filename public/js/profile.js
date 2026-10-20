@@ -7,11 +7,11 @@ function renderProfile() {
     document.getElementById('dispUsername').innerText = '@' + (user.username || user.name.toLowerCase().replace(/\s+/g, '_'));
     document.getElementById('dispAbout').innerText = user.about || 'Set About';
     document.getElementById('dispLinks').innerText = user.links || 'Add links';
-    if (user.avatar) document.getElementById('profileImage').src = user.avatar;
+    document.getElementById('profileImage').src = user.avatar || '/logo.png';
 }
 renderProfile();
 
-// Canvas compression for DP: Fast & High Quality
+// Canvas compression for DP
 function handleDpChange(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -21,7 +21,7 @@ function handleDpChange(event) {
         const img = new Image();
         img.onload = async function() {
             const canvas = document.createElement('canvas');
-            const size = 350; // optimized square
+            const size = 350;
             canvas.width = size;
             canvas.height = size;
 
@@ -33,7 +33,6 @@ function handleDpChange(event) {
             ctx.drawImage(img, startX, startY, minSide, minSide, 0, 0, size, size);
             const compressed = canvas.toDataURL('image/jpeg', 0.85);
 
-            // Save to DB
             const res = await fetch('/api/profile/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,11 +51,10 @@ function handleDpChange(event) {
     reader.readAsDataURL(file);
 }
 
-// Edit Name / About / Links
+// Edit Field
 async function editField(field) {
     let currentVal = user[field] || '';
-    let promptText = `Enter new ${field}:`;
-    let newVal = prompt(promptText, currentVal);
+    let newVal = prompt(`Enter new ${field}:`, currentVal);
 
     if (newVal !== null && newVal.trim() !== '') {
         const body = { phone: user.phone };
@@ -73,15 +71,5 @@ async function editField(field) {
             localStorage.setItem('dh_user', JSON.stringify(user));
             renderProfile();
         }
-    }
-}
-
-// Change App Icon URL
-function updateAppLogoUrl() {
-    const url = prompt("ඔයා කැමති App Logo එකේ Image URL එක දෙන්න:");
-    if (url && url.startsWith('http')) {
-        localStorage.setItem('dh_app_logo', url);
-        alert('App logo updated! Restarting app UI...');
-        window.location.href = '/';
     }
 }
