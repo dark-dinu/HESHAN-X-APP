@@ -1,7 +1,7 @@
 {
   "name": "dh-chat",
   "version": "2.0.0",
-  "description": "DH Chat - Private & Ephemeral Red-Black Messaging",
+  "description": "DH Chat Official Messenger",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
