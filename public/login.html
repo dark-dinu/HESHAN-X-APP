@@ -2,233 +2,256 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DH CHAT • Access</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#08090c">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DH CHAT • Enterprise Identity</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif; -webkit-tap-highlight-color: transparent; }
+        
         body {
-            background: #08090c;
+            background-color: #030406;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 20px;
-            overflow: hidden;
+            justify-content: center;
             position: relative;
+            overflow: hidden;
+            padding: 20px;
         }
 
-        /* Ambient Animated Neon Glows */
-        .ambient-glow {
+        /* Subtle Dark Grid + Mesh Gradient */
+        .ambient-mesh {
             position: absolute;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(230, 20, 60, 0.28), transparent 70%);
-            border-radius: 50%;
-            animation: floatGlow 8s ease-in-out infinite alternate;
-        }
-        .glow-bottom {
-            bottom: -50px;
-            right: -50px;
-            background: radial-gradient(circle, rgba(0, 168, 132, 0.2), transparent 70%);
-            animation-delay: -4s;
-        }
-
-        @keyframes floatGlow {
-            0% { transform: translate(-30px, -20px) scale(0.9); }
-            100% { transform: translate(30px, 30px) scale(1.1); }
-        }
-
-        /* Floating Card */
-        .glass-card {
             width: 100%;
-            max-width: 400px;
-            background: rgba(18, 20, 26, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            height: 100%;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(220, 20, 60, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 90% 80%, rgba(18, 140, 126, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(10, 12, 16, 1) 0%, #030406 100%);
+            z-index: 1;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 410px;
+            background: rgba(14, 17, 23, 0.75);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-top: 1px solid rgba(255, 40, 75, 0.4);
-            border-radius: 24px;
-            padding: 34px 28px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 20, 60, 0.15);
-            animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            border-top: 1px solid rgba(220, 38, 38, 0.35);
+            border-radius: 28px;
+            padding: 40px 32px;
             position: relative;
             z-index: 2;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(220, 20, 60, 0.06);
+            animation: cardEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        @keyframes cardAppear {
-            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+        @keyframes cardEntrance {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        .brand-header {
+        .brand-meta {
             text-align: center;
-            margin-bottom: 26px;
+            margin-bottom: 32px;
         }
-        .logo-circle {
-            width: 60px;
-            height: 60px;
-            border-radius: 18px;
-            margin: 0 auto 12px;
-            background: linear-gradient(135deg, #e6143c, #1a0208);
+
+        .brand-crest {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #1c0509, #0a0a0f);
+            border: 1px solid rgba(220, 38, 38, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            font-weight: 800;
-            color: #fff;
-            box-shadow: 0 8px 25px rgba(230, 20, 60, 0.45);
-        }
-        .brand-header h1 {
-            color: #f0f3f6;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        .brand-header p {
-            color: #7d8b99;
-            font-size: 13px;
-            margin-top: 4px;
+            font-size: 26px;
+            color: #ff3355;
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.25);
         }
 
-        /* Form Inputs */
-        .form-group {
-            margin-bottom: 16px;
+        .brand-meta h1 {
+            color: #f1f5f9;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
         }
-        .form-group label {
+
+        .brand-meta p {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 6px;
+            letter-spacing: 0.1px;
+        }
+
+        .form-field {
+            margin-bottom: 18px;
+            position: relative;
+        }
+
+        .field-label {
             display: block;
-            color: #9aa8b6;
+            color: #94a3b8;
             font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 6px;
-            text-transform: uppercase;
+            font-weight: 600;
             letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
         }
-        .input-field {
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            color: #475569;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .input-control {
             width: 100%;
-            padding: 13px 16px;
-            background: rgba(10, 11, 15, 0.8);
-            border: 1px solid #232732;
-            border-radius: 12px;
-            color: #e9edef;
+            background: rgba(8, 10, 15, 0.7);
+            border: 1px solid #1e2638;
+            border-radius: 14px;
+            padding: 14px 16px 14px 44px;
+            color: #f8fafc;
             font-size: 14px;
             outline: none;
             transition: all 0.25s ease;
         }
-        .input-field:focus {
-            border-color: #e6143c;
-            box-shadow: 0 0 12px rgba(230, 20, 60, 0.3);
-            background: rgba(14, 16, 22, 0.95);
+
+        .input-control:focus {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+            background: rgba(12, 15, 22, 0.9);
         }
 
-        .btn-submit {
+        .input-control:focus + i {
+            color: #dc2626;
+        }
+
+        .btn-official {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #e6143c, #b30f2f);
-            border: none;
-            border-radius: 12px;
-            color: #fff;
-            font-weight: 600;
+            padding: 15px;
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: #ffffff;
             font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
             cursor: pointer;
-            box-shadow: 0 8px 20px rgba(230, 20, 60, 0.35);
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.35);
             transition: transform 0.2s, box-shadow 0.2s;
             margin-top: 10px;
         }
-        .btn-submit:active {
+
+        .btn-official:active {
             transform: scale(0.98);
         }
 
-        .switch-mode {
+        .switch-prompt {
             text-align: center;
-            margin-top: 20px;
-            color: #7d8b99;
+            margin-top: 24px;
             font-size: 13px;
+            color: #64748b;
             cursor: pointer;
         }
-        .switch-mode span {
-            color: #ff3b66;
+
+        .switch-prompt span {
+            color: #ef4444;
             font-weight: 600;
         }
     </style>
 </head>
 <body>
 
-    <div class="ambient-glow"></div>
-    <div class="ambient-glow glow-bottom"></div>
+    <div class="ambient-mesh"></div>
 
-    <div class="glass-card">
-        <div class="brand-header">
-            <div class="logo-circle">DH</div>
-            <h1 id="title">Sign In</h1>
-            <p id="subTitle">Welcome back to encrypted chats</p>
+    <div class="auth-container">
+        <div class="brand-meta">
+            <div class="brand-crest"><i class="fa-solid fa-shield-halved"></i></div>
+            <h1 id="titleHeader">Secure Terminal</h1>
+            <p id="descHeader">Direct peer-to-peer encrypted communications</p>
         </div>
 
-        <form id="authForm" onsubmit="event.preventDefault(); submitAuth();">
-            <div class="form-group" id="nameContainer" style="display: none;">
-                <label>Display Name</label>
-                <input type="text" id="nameInput" class="input-field" placeholder="Heshan Samaranyaka">
+        <form id="authForm" onsubmit="event.preventDefault(); handleAuth();">
+            <div class="form-field" id="nameBox" style="display: none;">
+                <label class="field-label">Official Name</label>
+                <div class="input-wrapper">
+                    <input type="text" id="nameField" class="input-control" placeholder="Heshan Samaranyaka">
+                    <i class="fa-solid fa-user"></i>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="tel" id="phoneInput" class="input-field" placeholder="07xxxxxxxx" required>
+            <div class="form-field">
+                <label class="field-label">Mobile Number</label>
+                <div class="input-wrapper">
+                    <input type="tel" id="phoneField" class="input-control" placeholder="07xxxxxxxx" required>
+                    <i class="fa-solid fa-phone"></i>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="passInput" class="input-field" placeholder="••••••••" required>
+            <div class="form-field">
+                <label class="field-label">Secret Passcode</label>
+                <div class="input-wrapper">
+                    <input type="password" id="passField" class="input-control" placeholder="••••••••••••" required>
+                    <i class="fa-solid fa-lock"></i>
+                </div>
             </div>
 
-            <button type="submit" class="btn-submit" id="submitBtn">Sign In</button>
+            <button type="submit" class="btn-official" id="actionBtn">Authorize</button>
         </form>
 
-        <div class="switch-mode" onclick="toggleAuth()">
-            <span id="toggleText">Need an account? Register</span>
+        <div class="switch-prompt" onclick="toggleMode()">
+            <span id="toggleLink">New device? Enroll identity</span>
         </div>
     </div>
 
     <script>
-        let isLogin = true;
+        let isEnroll = false;
 
         if (localStorage.getItem('dh_user')) {
             window.location.replace('/');
         }
 
-        function toggleAuth() {
-            isLogin = !isLogin;
-            document.getElementById('nameContainer').style.display = isLogin ? 'none' : 'block';
-            document.getElementById('title').innerText = isLogin ? 'Sign In' : 'Create Account';
-            document.getElementById('subTitle').innerText = isLogin ? 'Welcome back to encrypted chats' : 'Start private disappearing conversations';
-            document.getElementById('submitBtn').innerText = isLogin ? 'Sign In' : 'Register';
-            document.getElementById('toggleText').innerText = isLogin ? "Need an account? Register" : "Already have an account? Sign In";
+        function toggleMode() {
+            isEnroll = !isEnroll;
+            document.getElementById('nameBox').style.display = isEnroll ? 'block' : 'none';
+            document.getElementById('titleHeader').innerText = isEnroll ? 'Enroll Identity' : 'Secure Terminal';
+            document.getElementById('descHeader').innerText = isEnroll ? 'Generate temporary communication credentials' : 'Direct peer-to-peer encrypted communications';
+            document.getElementById('actionBtn').innerText = isEnroll ? 'Enroll Now' : 'Authorize';
+            document.getElementById('toggleLink').innerText = isEnroll ? 'Already enrolled? Authorize' : 'New device? Enroll identity';
         }
 
-        async function submitAuth() {
-            const phone = document.getElementById('phoneInput').value.trim();
-            const password = document.getElementById('passInput').value;
-            const name = document.getElementById('nameInput').value.trim();
+        async function handleAuth() {
+            const phone = document.getElementById('phoneField').value.trim();
+            const password = document.getElementById('passField').value;
+            const name = document.getElementById('nameField').value.trim();
 
-            const url = isLogin ? '/api/login' : '/api/register';
-            const body = isLogin ? { phone, password } : { name, phone, password };
+            const endpoint = isEnroll ? '/api/register' : '/api/login';
+            const payload = isEnroll ? { name, phone, password } : { phone, password };
 
             try {
-                const res = await fetch(url, {
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                if (!res.ok) {
-                    alert(data.error || 'Authentication failed');
-                    return;
-                }
+                if (!res.ok) return alert(data.error || 'Authorization refused');
+
                 localStorage.setItem('dh_user', JSON.stringify(data.user));
                 window.location.replace('/');
             } catch (err) {
-                alert('Connection error');
+                alert('Terminal connection failed.');
             }
         }
     </script>
