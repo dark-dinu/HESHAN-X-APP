@@ -3,100 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DH CHAT</title>
+    <title>DH CHAT • Official</title>
     
-    <!-- PWA Settings (Android & iOS) -->
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DH Chat">
+    <meta name="theme-color" content="#0a0d14">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3670/3670157.png">
-    <meta name="theme-color" content="#0b141a">
+    
+    <!-- Official Font Awesome Pro CDN Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
         :root {
-            --bg-body: #08090c;
-            --bg-card: #0b141a;
-            --header-bg: #101920;
-            --tab-active: #00a884;
-            --accent-red: #e6143c;
-            --bubble-me: #005c4b;
-            --bubble-other: #1f2c34;
-            --text-main: #e9edef;
-            --text-muted: #8696a0;
-            --border-subtle: #1c272e;
+            --app-bg: #07090e;
+            --panel-bg: #0e131d;
+            --nav-bg: rgba(14, 19, 29, 0.85);
+            --border-line: rgba(255, 255, 255, 0.06);
+            --accent-crimson: #e11d48;
+            --accent-glow: rgba(225, 29, 72, 0.35);
+            --brand-green: #10b981;
+            --bubble-sent: #9f1239;
+            --bubble-received: #131b29;
+            --text-pure: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #475569;
         }
 
         body {
-            background: var(--bg-body);
-            color: var(--text-main);
+            background-color: #030407;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            color: var(--text-pure);
         }
 
-        .chat-app {
+        .phone-frame {
             width: 100%;
-            max-width: 480px;
+            max-width: 440px;
             height: 100vh;
-            background: var(--bg-card);
+            background: var(--app-bg);
             display: flex;
             flex-direction: column;
             position: relative;
             overflow: hidden;
         }
 
-        @media (min-width: 500px) {
-            .chat-app {
+        @media (min-width: 480px) {
+            .phone-frame {
                 height: 94vh;
-                border-radius: 20px;
-                border: 1px solid var(--border-subtle);
-                box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+                border-radius: 36px;
+                border: 1px solid var(--border-line);
+                box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 40px rgba(225,29,72,0.08);
             }
         }
 
         /* Top Header */
-        .app-header {
-            background: var(--header-bg);
-            padding: 12px 16px;
+        .header-bar {
+            height: 64px;
+            background: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-        .header-title {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-        }
-        .header-title span { color: var(--accent-red); }
-        .header-icons {
-            display: flex;
-            gap: 16px;
-            font-size: 18px;
-            color: var(--text-muted);
-            cursor: pointer;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border-line);
+            z-index: 30;
         }
 
-        /* WhatsApp Search Header */
-        .search-container {
-            padding: 8px 12px;
-            background: var(--header-bg);
-            position: relative;
-        }
-        .search-pill {
-            background: #192229;
-            border-radius: 10px;
+        .header-brand {
             display: flex;
             align-items: center;
-            padding: 8px 14px;
             gap: 10px;
-            border: 1px solid var(--border-subtle);
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
         }
-        .search-pill input {
+
+        .brand-tag {
+            background: linear-gradient(135deg, var(--accent-crimson), #881337);
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            color: var(--text-secondary);
+            font-size: 17px;
+        }
+        .header-actions i:active { transform: scale(0.9); }
+
+        /* Search Header */
+        .search-rail {
+            padding: 12px 16px;
+            background: var(--app-bg);
+            border-bottom: 1px solid var(--border-line);
+        }
+
+        .search-box-pill {
+            background: #111726;
+            border: 1px solid var(--border-line);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+        .search-box-pill:focus-within {
+            border-color: var(--accent-crimson);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .search-box-pill input {
             background: transparent;
             border: none;
             outline: none;
@@ -105,569 +135,646 @@
             width: 100%;
         }
 
-        /* Stories Row (Inspired by WhatsApp Updates tab) */
-        .stories-row {
-            padding: 12px 14px;
+        /* Viewport Tab Contents */
+        .tab-panel {
+            flex: 1;
+            overflow-y: auto;
             display: flex;
-            gap: 14px;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--border-subtle);
-            background: #0d151c;
-            scrollbar-width: none;
+            flex-direction: column;
+            position: relative;
         }
-        .stories-row::-webkit-scrollbar { display: none; }
-        .story-node {
+        .tab-panel.hidden { display: none !important; }
+
+        /* Statuses/Stories Horizontal Rail */
+        .status-rail {
+            padding: 16px 14px;
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-line);
+            scrollbar-width: none;
+            background: rgba(14, 19, 29, 0.4);
+        }
+        .status-rail::-webkit-scrollbar { display: none; }
+
+        .status-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            min-width: 62px;
+        }
+
+        .status-ring {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            padding: 2.5px;
+            background: linear-gradient(135deg, var(--accent-crimson), #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .status-ring img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--app-bg);
+        }
+
+        .status-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            max-width: 62px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Feed List */
+        .directory-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .directory-item {
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid var(--border-line);
+            cursor: pointer;
+            transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .directory-item:hover { background: #0f1523; }
+        .directory-item:active { background: #141c2e; }
+
+        .avatar-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-line);
+            background: #182030;
+        }
+
+        .node-info {
+            flex: 1;
+        }
+        .node-title {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+        .node-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Chat Room Interactive Deck */
+        .active-room {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #06070a;
+        }
+
+        .room-topbar {
+            height: 60px;
+            background: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-line);
+        }
+
+        .room-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .msg-node {
+            max-width: 76%;
+            padding: 10px 14px 7px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.45;
+            position: relative;
+            word-break: break-word;
+            animation: springUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes springUp {
+            from { opacity: 0; transform: translateY(12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .msg-node.me {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--bubble-sent), #881337);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 14px rgba(159, 18, 57, 0.3);
+        }
+
+        .msg-node.other {
+            align-self: flex-start;
+            background: var(--bubble-received);
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border-line);
+        }
+
+        .msg-node img {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-top: 6px;
+            display: block;
+        }
+
+        .msg-meta-stamp {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            float: right;
+            margin-left: 10px;
+            margin-top: 4px;
+        }
+
+        /* Dynamic Chat Input Tray */
+        .tray-bar {
+            padding: 10px 14px;
+            background: var(--nav-bg);
+            border-top: 1px solid var(--border-line);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tray-input {
+            flex: 1;
+            background: #111726;
+            border: 1px solid var(--border-line);
+            border-radius: 24px;
+            padding: 11px 18px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .tray-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-crimson), #9f1239);
+            border: none;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: transform 0.15s;
+        }
+        .tray-btn:active { transform: scale(0.92); }
+
+        /* Profile Manager Tab */
+        .profile-deck {
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dp-box {
+            position: relative;
+            width: 124px;
+            height: 124px;
+            margin-bottom: 24px;
+        }
+
+        .dp-box img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent-crimson);
+            box-shadow: 0 10px 30px var(--accent-glow);
+            background: #182030;
+        }
+
+        .dp-camera-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--accent-crimson);
+            border: 2px solid var(--app-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            transition: transform 0.2s;
+        }
+        .dp-camera-badge:active { transform: scale(0.85); }
+
+        /* Bottom Glass Nav */
+        .bottom-shelf {
+            height: 64px;
+            background: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-line);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .shelf-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            cursor: pointer;
-            min-width: 58px;
-        }
-        .story-ring {
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            border: 2px solid var(--tab-active);
-            padding: 2px;
-            position: relative;
-        }
-        .story-ring.me { border-color: var(--accent-red); }
-        .story-ring img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        .story-name {
             font-size: 11px;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 58px;
-        }
-
-        /* View Panels */
-        .tab-content {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        .hidden { display: none !important; }
-
-        /* Search Results List */
-        .users-list {
-            display: flex;
-            flex-direction: column;
-        }
-        .user-list-item {
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-tertiary);
             cursor: pointer;
-            transition: background 0.15s;
-        }
-        .user-list-item:hover { background: #131c24; }
-        .user-list-item img {
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            object-fit: cover;
+            transition: color 0.2s, transform 0.2s;
         }
 
-        /* Active Chat Workspace */
-        .chat-view {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            background: #0b141a url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') repeat;
-            background-blend-mode: overlay;
-        }
-        .chat-topbar {
-            background: var(--header-bg);
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-        .back-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 20px;
-            cursor: pointer;
-        }
-        .chat-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        .chat-feed {
-            flex: 1;
-            overflow-y: auto;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .shelf-item i { font-size: 19px; }
 
-        .bubble {
-            max-width: 75%;
-            padding: 7px 10px 5px;
-            border-radius: 8px;
-            font-size: 14px;
-            position: relative;
-            word-break: break-word;
-            animation: bubbleAnim 0.25s ease-out;
-        }
-        @keyframes bubbleAnim {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .bubble.me {
-            align-self: flex-end;
-            background: var(--bubble-me);
-            color: #e9edef;
-            border-top-right-radius: 2px;
-        }
-        .bubble.other {
-            align-self: flex-start;
-            background: var(--bubble-other);
-            color: #d1d7db;
-            border-top-left-radius: 2px;
-        }
-        .bubble img {
-            max-width: 100%;
-            border-radius: 6px;
-            margin-top: 4px;
-        }
-        .bubble-meta {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.55);
-            float: right;
-            margin-left: 8px;
-            margin-top: 4px;
-        }
-
-        /* Input Controls */
-        .chat-input-bar {
-            padding: 8px 10px;
-            background: var(--header-bg);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .msg-input-box {
-            flex: 1;
-            background: #202c33;
-            border: none;
-            outline: none;
-            border-radius: 20px;
-            padding: 10px 16px;
-            color: #fff;
-            font-size: 14px;
-        }
-        .action-circle-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--accent-red);
-            border: none;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(230, 20, 60, 0.3);
-        }
-
-        /* Profile / Settings Tab */
-        .profile-container {
-            padding: 24px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .dp-wrapper {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            margin-bottom: 20px;
-        }
-        .dp-wrapper img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--accent-red);
-        }
-        .dp-badge {
-            position: absolute;
-            bottom: 4px;
-            right: 4px;
-            background: var(--accent-red);
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            font-size: 16px;
-        }
-
-        /* Bottom Tab Navigation (Exact WhatsApp copy) */
-        .bottom-nav {
-            height: 60px;
-            background: var(--header-bg);
-            border-top: 1px solid var(--border-subtle);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 3px;
-            font-size: 11px;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .nav-item.active {
-            color: var(--tab-active);
-            font-weight: 600;
-        }
-        .nav-icon {
-            font-size: 18px;
+        .shelf-item.active {
+            color: var(--accent-crimson);
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
 
-<div class="chat-app">
-    <!-- Top Bar -->
-    <div class="app-header">
-        <div class="header-title">DH <span>CHAT</span></div>
-        <div class="header-icons">
-            <span onclick="triggerInstall()" title="Install App">📲</span>
-            <span onclick="switchTab('profileTab')" title="Settings">⚙️</span>
+<div class="phone-frame">
+    <!-- Top Global Header -->
+    <div class="header-bar">
+        <div class="header-brand">
+            DH CHAT <span class="brand-tag">PRO</span>
+        </div>
+        <div class="header-actions">
+            <i class="fa-solid fa-cloud-arrow-down" onclick="triggerPwaPrompt()" title="Install Native App"></i>
+            <i class="fa-solid fa-sliders" onclick="switchView('profileView')"></i>
         </div>
     </div>
 
-    <!-- TAB 1: CHATS (Home) -->
-    <div class="tab-content" id="chatsTab">
-        <!-- Search -->
-        <div class="search-container">
-            <div class="search-pill">
-                <span>🔍</span>
-                <input type="text" id="userSearchInput" placeholder="Search by name or phone..." oninput="handleSearch(this.value)">
+    <!-- VIEW 1: CONVERSATIONS / DIRECTORY -->
+    <div class="tab-panel" id="chatsView">
+        <div class="search-rail">
+            <div class="search-box-pill">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-tertiary); font-size: 14px;"></i>
+                <input type="text" id="searchInput" placeholder="Search accounts by name or phone..." oninput="executeSearch(this.value)">
             </div>
         </div>
 
-        <!-- WhatsApp-style Status Row -->
-        <div class="stories-row">
-            <div class="story-node" onclick="switchTab('profileTab')">
-                <div class="story-ring me">
-                    <img id="myStoryAvatar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+        <div class="status-rail">
+            <div class="status-node" onclick="switchView('profileView')">
+                <div class="status-ring">
+                    <img id="myRailDp" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
                 </div>
-                <div class="story-name">My Status</div>
+                <div class="status-label">Your DP</div>
             </div>
-            <div class="story-node" onclick="alert('Ephemeral status feature coming soon!')">
-                <div class="story-ring">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135768.png">
+            <div class="status-node" onclick="alert('Ephemeral encryption status: Active (10-min memory wipe)')">
+                <div class="status-ring" style="background: linear-gradient(135deg, #10b981, #065f46);">
+                    <img src="https://cdn-icons-png.flaticon.com/512/954/954591.png">
                 </div>
-                <div class="story-name">Updates</div>
+                <div class="status-label">Shield</div>
             </div>
         </div>
 
-        <!-- Search Results / Active Conversation list -->
-        <div class="users-list" id="usersFeed">
-            <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                Type a friend's phone number or name above to start messaging.
+        <div class="directory-list" id="directoryResults">
+            <div style="padding: 40px 20px; text-align: center; color: var(--text-tertiary); font-size: 13px;">
+                Enter a registered identity in the search bar above to begin conversation.
             </div>
         </div>
     </div>
 
-    <!-- TAB 2: ACTIVE PRIVATE CHAT -->
-    <div class="tab-content hidden" id="chatRoomTab">
-        <div class="chat-view">
-            <div class="chat-topbar">
-                <button class="back-btn" onclick="exitChat()">←</button>
-                <img id="activePartnerImg" class="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+    <!-- VIEW 2: ACTIVE SECURE CHAT -->
+    <div class="tab-panel hidden" id="chatRoomView">
+        <div class="active-room">
+            <div class="room-topbar">
+                <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary); cursor: pointer; font-size: 18px; padding-right: 6px;" onclick="closeActiveRoom()"></i>
+                <img id="peerDp" class="avatar-circle" style="width: 38px; height: 38px;" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
                 <div style="flex: 1;">
-                    <h4 id="activePartnerName" style="font-size: 14px; font-weight: 600;">Contact</h4>
-                    <span id="activePartnerPhone" style="font-size: 11px; color: var(--text-muted);">Online</span>
+                    <div id="peerName" style="font-size: 15px; font-weight: 600;">Contact</div>
+                    <div id="peerPhone" style="font-size: 11px; color: var(--brand-green);">Active Peer</div>
                 </div>
-                <span style="font-size: 10px; color: #ff476e; background: #260a12; padding: 3px 8px; border-radius: 12px; border: 1px solid #ff004455;">10m Auto-Delete</span>
+                <span style="font-size: 10px; background: rgba(225,29,72,0.15); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 4px 8px; border-radius: 8px;">10m Wipe</span>
             </div>
 
-            <div class="chat-feed" id="chatFeed"></div>
+            <div class="room-feed" id="chatFeed"></div>
 
-            <div class="chat-input-bar">
-                <input type="file" id="chatImageInput" accept="image/*" style="display: none;" onchange="sendChatImage(event)">
-                <button style="background:none; border:none; font-size: 20px; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chatImageInput').click()">📷</button>
-                <input type="text" id="chatTextInput" class="msg-input-box" placeholder="Message..." autocomplete="off">
-                <button class="action-circle-btn" onclick="sendTextMessage()">➤</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB 3: PROFILE & SETTINGS -->
-    <div class="tab-content hidden" id="profileTab">
-        <div class="profile-container">
-            <div class="dp-wrapper">
-                <img id="profileDpImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-                <input type="file" id="dpPicker" accept="image/*" style="display: none;" onchange="handleDpUpload(event)">
-                <div class="dp-badge" onclick="document.getElementById('dpPicker').click()" title="Choose Photo">📷</div>
-            </div>
-            
-            <h3 id="profileNameDisplay" style="margin-bottom: 4px;">User</h3>
-            <p id="profilePhoneDisplay" style="color: var(--accent-red); font-size: 13px; margin-bottom: 24px;">Phone</p>
-
-            <div style="width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px;">
-                <button class="action-circle-btn" style="width: 100%; border-radius: 10px; height: 42px; background: #192229; border: 1px solid var(--border-subtle);" onclick="triggerInstall()">📲 Install App on Phone</button>
-                <button class="action-circle-btn" style="width: 100%; border-radius: 10px; height: 42px; background: #260a12; border: 1px solid #ff004466;" onclick="logout()">Log Out</button>
+            <div class="tray-bar">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="dispatchImage(event)">
+                <i class="fa-solid fa-image" style="color: var(--text-secondary); font-size: 20px; cursor: pointer; padding: 6px;" onclick="document.getElementById('imageInput').click()"></i>
+                <input type="text" id="textInput" class="tray-input" placeholder="Type encrypted message..." autocomplete="off">
+                <button class="tray-btn" onclick="dispatchText()"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- WhatsApp Bottom Navigation Bar -->
-    <div class="bottom-nav">
-        <div class="nav-item active" id="navChats" onclick="switchTab('chatsTab')">
-            <div class="nav-icon">💬</div>
-            <div>Chats</div>
+    <!-- VIEW 3: PROFILE IDENTITY & DP SELECTION -->
+    <div class="tab-panel hidden" id="profileView">
+        <div class="profile-deck">
+            <div class="dp-box">
+                <img id="profileCurrentDp" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                <!-- Direct File Input for Gallery Photo -->
+                <input type="file" id="galleryDpSelector" accept="image/*" style="display: none;" onchange="processAndUploadDp(event)">
+                <div class="dp-camera-badge" onclick="document.getElementById('galleryDpSelector').click()" title="Select Image from Gallery">
+                    <i class="fa-solid fa-camera"></i>
+                </div>
+            </div>
+
+            <h2 id="profileDisplayName" style="font-size: 20px; font-weight: 700;">Account</h2>
+            <p id="profileDisplayPhone" style="color: var(--accent-crimson); font-size: 13px; margin-top: 4px; font-weight: 600;">+94</p>
+
+            <div style="width: 100%; max-width: 320px; margin-top: 36px; display: flex; flex-direction: column; gap: 14px;">
+                <button class="btn-official" style="background: #111726; border: 1px solid var(--border-line); color: #fff; padding: 13px; border-radius: 12px; font-size: 14px; cursor: pointer;" onclick="triggerPwaPrompt()">
+                    <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Install Native Application
+                </button>
+                <button class="btn-official" style="background: rgba(225,29,72,0.1); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 13px; border-radius: 12px; font-size: 14px; cursor: pointer;" onclick="terminateSession()">
+                    <i class="fa-solid fa-right-from-bracket" style="margin-right: 8px;"></i> Terminate Session
+                </button>
+            </div>
         </div>
-        <div class="nav-item" id="navUpdates" onclick="alert('Disappearing updates are enabled by default!')">
-            <div class="nav-icon">⭕</div>
-            <div>Updates</div>
+    </div>
+
+    <!-- Bottom Navigation Bar (WhatsApp/iOS Architecture) -->
+    <div class="bottom-shelf">
+        <div class="shelf-item active" id="tabChats" onclick="switchView('chatsView')">
+            <i class="fa-solid fa-comment-dots"></i>
+            <span>Chats</span>
         </div>
-        <div class="nav-item" id="navProfile" onclick="switchTab('profileTab')">
-            <div class="nav-icon">👤</div>
-            <div>Profile</div>
+        <div class="shelf-item" id="tabUpdates" onclick="alert('Auto-delete security daemon active. Disappearing chats in 10 minutes.')">
+            <i class="fa-solid fa-circle-notch"></i>
+            <span>Security</span>
+        </div>
+        <div class="shelf-item" id="tabProfile" onclick="switchView('profileView')">
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Identity</span>
         </div>
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    const user = JSON.parse(localStorage.getItem('dh_user') || 'null');
-    if (!user) {
-        window.location.replace('/login.html');
-    }
+    const userSession = JSON.parse(localStorage.getItem('dh_user') || 'null');
+    if (!userSession) window.location.replace('/login.html');
 
     const socket = io();
-    let currentPartner = null;
-    let deferredPrompt;
+    let currentPeer = null;
+    let installPromptEvent;
 
-    // Service Worker for Android/iOS PWA
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js');
-    }
+    // Service Worker Install
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
-        deferredPrompt = e;
+        installPromptEvent = e;
     });
 
-    function triggerInstall() {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+    function triggerPwaPrompt() {
+        if (installPromptEvent) {
+            installPromptEvent.prompt();
+            installPromptEvent.userChoice.then(() => installPromptEvent = null);
         } else {
-            alert('To install:\n- On Android: Chrome Menu (⋮) -> Install App\n- On iOS: Safari Share -> Add to Home Screen');
+            alert('To install app:\n• On Android (Chrome): Menu (⋮) → "Install app"\n• On iPhone (Safari): Share icon → "Add to Home Screen"');
         }
     }
 
-    // App Init
-    function init() {
-        document.getElementById('myStoryAvatar').src = user.avatar;
-        document.getElementById('profileDpImg').src = user.avatar;
-        document.getElementById('profileNameDisplay').innerText = user.name;
-        document.getElementById('profilePhoneDisplay').innerText = user.phone;
+    // Refresh UI Profiles
+    function syncProfile() {
+        const fallback = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+        const dp = userSession.avatar || fallback;
+        document.getElementById('myRailDp').src = dp;
+        document.getElementById('profileCurrentDp').src = dp;
+        document.getElementById('profileDisplayName').innerText = userSession.name;
+        document.getElementById('profileDisplayPhone').innerText = userSession.phone;
 
-        socket.emit('register-socket', user.phone);
+        socket.emit('register-socket', userSession.phone);
     }
-    init();
+    syncProfile();
 
-    // Tab Navigation
-    function switchTab(tabId) {
-        document.getElementById('chatsTab').classList.add('hidden');
-        document.getElementById('chatRoomTab').classList.add('hidden');
-        document.getElementById('profileTab').classList.add('hidden');
+    // High Performance Client-Side Canvas Image Compression
+    // High-res phone photo එකක් upload කරද්දි crash නොවී optimize කරන function එක:
+    function processAndUploadDp(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        document.getElementById('navChats').classList.remove('active');
-        document.getElementById('navProfile').classList.remove('active');
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const img = new Image();
+            img.onload = async function() {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 400;
+                const MAX_HEIGHT = 400;
+                let width = img.width;
+                let height = img.height;
 
-        document.getElementById(tabId).classList.remove('hidden');
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
 
-        if (tabId === 'chatsTab') document.getElementById('navChats').classList.add('active');
-        if (tabId === 'profileTab') document.getElementById('navProfile').classList.add('active');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // High quality JPEG compression
+                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+                // Send to Server
+                try {
+                    const res = await fetch('/api/profile/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: userSession.phone,
+                            avatar: optimizedBase64
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        userSession.avatar = optimizedBase64;
+                        localStorage.setItem('dh_user', JSON.stringify(userSession));
+                        syncProfile();
+                        alert('Official DP Synchronized Successfully ✅');
+                    } else {
+                        alert(data.error || 'Upload failed');
+                    }
+                } catch (err) {
+                    alert('Network error while saving DP');
+                }
+            };
+            img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
-    function exitChat() {
-        currentPartner = null;
-        switchTab('chatsTab');
+    // Tab Switching
+    function switchView(viewId) {
+        document.getElementById('chatsView').classList.add('hidden');
+        document.getElementById('chatRoomView').classList.add('hidden');
+        document.getElementById('profileView').classList.add('hidden');
+
+        document.getElementById('tabChats').classList.remove('active');
+        document.getElementById('tabProfile').classList.remove('active');
+
+        document.getElementById(viewId).classList.remove('hidden');
+
+        if (viewId === 'chatsView') document.getElementById('tabChats').classList.add('active');
+        if (viewId === 'profileView') document.getElementById('tabProfile').classList.add('active');
     }
 
-    // User Search
-    let searchDebounce;
-    async function handleSearch(q) {
-        clearTimeout(searchDebounce);
-        const container = document.getElementById('usersFeed');
+    function closeActiveRoom() {
+        currentPeer = null;
+        switchView('chatsView');
+    }
+
+    // Search Engine
+    let debounce;
+    async function executeSearch(q) {
+        clearTimeout(debounce);
+        const container = document.getElementById('directoryResults');
         if (!q.trim()) {
-            container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">Type a friend's phone number or name above to start messaging.</div>`;
+            container.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: var(--text-tertiary); font-size: 13px;">Enter a registered identity in the search bar above to begin conversation.</div>`;
             return;
         }
 
-        searchDebounce = setTimeout(async () => {
+        debounce = setTimeout(async () => {
             const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-            const users = await res.json();
+            const accounts = await res.json();
             container.innerHTML = '';
 
-            const list = users.filter(u => u.phone !== user.phone);
-            if (list.length === 0) {
-                container.innerHTML = `<div style="padding: 20px; text-align:center; color: var(--text-muted); font-size: 13px;">No user found</div>`;
+            const filtered = accounts.filter(a => a.phone !== userSession.phone);
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-tertiary); font-size: 13px;">No matching identity found.</div>`;
                 return;
             }
 
-            list.forEach(item => {
+            filtered.forEach(acc => {
                 const row = document.createElement('div');
-                row.className = 'user-list-item';
+                row.className = 'directory-item';
                 row.innerHTML = `
-                    <img src="${item.avatar}">
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; font-size: 14px;">${item.name}</div>
-                        <div style="font-size: 12px; color: var(--accent-red);">${item.phone}</div>
+                    <img class="avatar-circle" src="${acc.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}">
+                    <div class="node-info">
+                        <div class="node-title">${acc.name}</div>
+                        <div class="node-sub">${acc.phone}</div>
                     </div>
                 `;
-                row.onclick = () => openChat(item);
+                row.onclick = () => initChatRoom(acc);
                 container.appendChild(row);
             });
-        }, 300);
+        }, 250);
     }
 
-    // Open Chat & Load Messages
-    async function openChat(partner) {
-        currentPartner = partner;
-        document.getElementById('activePartnerName').innerText = partner.name;
-        document.getElementById('activePartnerPhone').innerText = partner.phone;
-        document.getElementById('activePartnerImg').src = partner.avatar;
+    // Launch Chat
+    async function initChatRoom(peer) {
+        currentPeer = peer;
+        document.getElementById('peerName').innerText = peer.name;
+        document.getElementById('peerPhone').innerText = peer.phone;
+        document.getElementById('peerDp').src = peer.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 
-        switchTab('chatRoomTab');
-
+        switchView('chatRoomView');
         const feed = document.getElementById('chatFeed');
         feed.innerHTML = '';
 
-        const res = await fetch(`/api/messages?user1=${user.phone}&user2=${partner.phone}`);
+        const res = await fetch(`/api/messages?user1=${userSession.phone}&user2=${peer.phone}`);
         const messages = await res.json();
-        messages.forEach(m => renderBubble(m));
+        messages.forEach(m => insertBubble(m));
         feed.scrollTop = feed.scrollHeight;
     }
 
-    // Send Text Message
-    function sendTextMessage() {
-        const input = document.getElementById('chatTextInput');
+    // Send Message Logic
+    function dispatchText() {
+        const input = document.getElementById('textInput');
         const text = input.value.trim();
-        if (!text || !currentPartner) return;
+        if (!text || !currentPeer) return;
 
         socket.emit('private-message', {
-            from: user.phone,
-            to: currentPartner.phone,
+            from: userSession.phone,
+            to: currentPeer.phone,
             text: text
         });
         input.value = '';
     }
 
-    document.getElementById('chatTextInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') sendTextMessage();
+    document.getElementById('textInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') dispatchText();
     });
 
-    // Send Chat Image
-    function sendChatImage(e) {
+    function dispatchImage(e) {
         const file = e.target.files[0];
-        if (file && currentPartner) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                socket.emit('private-message', {
-                    from: user.phone,
-                    to: currentPartner.phone,
-                    image: reader.result
-                });
-            };
-            reader.readAsDataURL(file);
-        }
+        if (!file || !currentPeer) return;
+
+        const reader = new FileReader();
+        reader.onload = function() {
+            socket.emit('private-message', {
+                from: userSession.phone,
+                to: currentPeer.phone,
+                image: reader.result
+            });
+        };
+        reader.readAsDataURL(file);
     }
 
-    // Real-Time Socket Listeners
-    socket.on('message-sent', (msg) => {
-        renderBubble(msg);
-    });
-
+    // Socket Event Handling
+    socket.on('message-sent', (msg) => insertBubble(msg));
     socket.on('receive-private-message', (msg) => {
-        if (currentPartner && msg.from === currentPartner.phone) {
-            renderBubble(msg);
+        if (currentPeer && msg.from === currentPeer.phone) {
+            insertBubble(msg);
         } else {
-            alert(`New message from ${msg.from}`);
+            alert(`Encrypted transmission from: ${msg.from}`);
         }
     });
 
-    function renderBubble(msg) {
-        const isMe = msg.from === user.phone;
+    function insertBubble(msg) {
+        const isMine = msg.from === userSession.phone;
         const div = document.createElement('div');
-        div.className = `bubble ${isMe ? 'me' : 'other'}`;
-        
-        let body = '';
-        if (msg.text) body += `<div>${msg.text}</div>`;
-        if (msg.image) body += `<img src="${msg.image}">`;
-        body += `<span class="bubble-meta">${msg.time}</span>`;
+        div.className = `msg-node ${isMine ? 'me' : 'other'}`;
 
-        div.innerHTML = body;
+        let payload = '';
+        if (msg.text) payload += `<div>${msg.text}</div>`;
+        if (msg.image) payload += `<img src="${msg.image}">`;
+        payload += `<span class="msg-meta-stamp">${msg.time}</span>`;
+
+        div.innerHTML = payload;
         const feed = document.getElementById('chatFeed');
         feed.appendChild(div);
         feed.scrollTop = feed.scrollHeight;
     }
 
-    // DP Image Picker & File Upload
-    function handleDpUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async () => {
-            const base64Image = reader.result;
-            try {
-                const res = await fetch('/api/profile/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: user.phone,
-                        name: user.name,
-                        avatar: base64Image
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    user.avatar = base64Image;
-                    localStorage.setItem('dh_user', JSON.stringify(user));
-                    init();
-                    alert('Profile photo updated successfully!');
-                }
-            } catch (err) {
-                alert('Failed to upload image');
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function logout() {
+    function terminateSession() {
         localStorage.removeItem('dh_user');
         window.location.replace('/login.html');
     }
