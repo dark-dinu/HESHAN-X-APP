@@ -9,19 +9,19 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app);
 
-app.use(express.json({ limit: '30mb' }));
-app.use(express.urlencoded({ limit: '30mb', extended: true }));
+app.use(express.json({ limit: '40mb' }));
+app.use(express.urlencoded({ limit: '40mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const io = new Server(server, {
   cors: { origin: "*" },
-  maxHttpBufferSize: 3e7
+  maxHttpBufferSize: 4e7
 });
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/dhchat?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('DH-CHAT Database Connected! ✅'))
+  .then(() => console.log('DH-CHAT Engine Online & Connected! ✅'))
   .catch(err => console.error('Database connection error:', err));
 
 // Schemas
@@ -33,17 +33,21 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String, default: '/logo.png' },
   about: { type: String, default: 'Hey there! I am using DH Chat.' },
   links: { type: String, default: '' },
+  lastSeen: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('DhProUser', userSchema);
 
+// Message Schema - Auto delete in 1 Hour (3600 seconds)
 const messageSchema = new mongoose.Schema({
   from: { type: String, required: true },
   to: { type: String, required: true },
   text: { type: String, default: null },
   image: { type: String, default: null },
+  audio: { type: String, default: null },
   time: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 600 } // Auto-delete in 10 minutes (RAM safe)
+  status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
+  createdAt: { type: Date, default: Date.now, expires: 3600 } // Auto-delete after 1 HOUR
 });
 const Message = mongoose.model('DhProMessage', messageSchema);
 
@@ -51,11 +55,11 @@ const Message = mongoose.model('DhProMessage', messageSchema);
 app.post('/api/register', async (req, res) => {
   try {
     const { name, phone, password } = req.body;
-    if (!name || !phone || !password) return res.status(400).json({ error: 'All fields are required.' });
+    if (!name || !phone || !password) return res.status(400).json({ error: 'All fields required.' });
 
     const cleanPhone = phone.trim();
     const exists = await User.findOne({ phone: cleanPhone });
-    if (exists) return res.status(400).json({ error: 'Phone number already registered.' });
+    if (exists) return res.status(400).json({ error: 'Phone already registered.' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
@@ -66,7 +70,6 @@ app.post('/api/register', async (req, res) => {
       avatar: '/logo.png'
     });
     await user.save();
-
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -88,25 +91,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Profile Update API
-app.post('/api/profile/update', async (req, res) => {
-  try {
-    const { phone, name, about, avatar, links } = req.body;
-    const update = {};
-    if (name) update.name = name;
-    if (about !== undefined) update.about = about;
-    if (avatar) update.avatar = avatar;
-    if (links !== undefined) update.links = links;
-
-    const user = await User.findOneAndUpdate({ phone }, update, { new: true });
-    if (!user) return res.status(404).json({ error: 'User missing' });
-    res.json({ success: true, user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Search API
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q;
@@ -123,7 +107,6 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Messages API
 app.get('/api/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
@@ -139,23 +122,45 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-// Real-time Sockets
-const activeSockets = {};
+// Socket Realtime Hub
+const activeSockets = {}; // { phone: socketId }
 
 io.on('connection', (socket) => {
-  socket.on('register-socket', (phone) => {
+  socket.on('register-socket', async (phone) => {
     activeSockets[phone] = socket.id;
     io.emit('online-peers', Object.keys(activeSockets));
   });
 
+  // Sending message
   socket.on('private-message', async (data) => {
-    const { from, to, text, image } = data;
+    const { from, to, text, image, audio } = data;
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Check if recipient is online
+    const isRecipientOnline = !!activeSockets[to];
+    const initialStatus = isRecipientOnline ? 'delivered' : 'sent';
 
-    const newMsg = new Message({ from, to, text, image, time: timeNow });
+    const newMsg = new Message({
+      from,
+      to,
+      text,
+      image,
+      audio,
+      time: timeNow,
+      status: initialStatus
+    });
     await newMsg.save();
 
-    const payload = { from, to, text, image, time: timeNow, _id: newMsg._id };
+    const payload = {
+      _id: newMsg._id,
+      from,
+      to,
+      text,
+      image,
+      audio,
+      time: timeNow,
+      status: initialStatus
+    };
 
     if (activeSockets[to]) {
       io.to(activeSockets[to]).emit('receive-private-message', payload);
@@ -163,16 +168,45 @@ io.on('connection', (socket) => {
     socket.emit('message-sent', payload);
   });
 
-  socket.on('disconnect', () => {
+  // Read / Seen receipts (Blue Ticks)
+  socket.on('mark-as-read', async ({ senderPhone, readerPhone }) => {
+    await Message.updateMany(
+      { from: senderPhone, to: readerPhone, status: { $ne: 'read' } },
+      { $set: { status: 'read' } }
+    );
+    if (activeSockets[senderPhone]) {
+      io.to(activeSockets[senderPhone]).emit('messages-seen', { by: readerPhone });
+    }
+  });
+
+  // Delete message for everyone
+  socket.on('delete-message', async ({ messageId, to }) => {
+    try {
+      await Message.findByIdAndDelete(messageId);
+      socket.emit('message-deleted', { messageId });
+      if (activeSockets[to]) {
+        io.to(activeSockets[to]).emit('message-deleted', { messageId });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  socket.on('disconnect', async () => {
+    let disconnectedPhone = null;
     for (let phone in activeSockets) {
       if (activeSockets[phone] === socket.id) {
+        disconnectedPhone = phone;
         delete activeSockets[phone];
         break;
       }
     }
-    io.emit('online-peers', Object.keys(activeSockets));
+    if (disconnectedPhone) {
+      await User.findOneAndUpdate({ phone: disconnectedPhone }, { lastSeen: new Date() });
+      io.emit('online-peers', Object.keys(activeSockets));
+    }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`DH CHAT Server listening on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
