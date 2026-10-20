@@ -3,781 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DH CHAT • Official</title>
-    
+    <title>WhatsApp</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0a0d14">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3670/3670157.png">
-    
-    <!-- Official Font Awesome Pro CDN Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        :root {
-            --app-bg: #07090e;
-            --panel-bg: #0e131d;
-            --nav-bg: rgba(14, 19, 29, 0.85);
-            --border-line: rgba(255, 255, 255, 0.06);
-            --accent-crimson: #e11d48;
-            --accent-glow: rgba(225, 29, 72, 0.35);
-            --brand-green: #10b981;
-            --bubble-sent: #9f1239;
-            --bubble-received: #131b29;
-            --text-pure: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-tertiary: #475569;
-        }
-
-        body {
-            background-color: #030407;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            color: var(--text-pure);
-        }
-
-        .phone-frame {
-            width: 100%;
-            max-width: 440px;
-            height: 100vh;
-            background: var(--app-bg);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-
-        @media (min-width: 480px) {
-            .phone-frame {
-                height: 94vh;
-                border-radius: 36px;
-                border: 1px solid var(--border-line);
-                box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 40px rgba(225,29,72,0.08);
-            }
-        }
-
-        /* Top Header */
-        .header-bar {
-            height: 64px;
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            border-bottom: 1px solid var(--border-line);
-            z-index: 30;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 19px;
-            font-weight: 700;
-            letter-spacing: -0.4px;
-        }
-
-        .brand-tag {
-            background: linear-gradient(135deg, var(--accent-crimson), #881337);
-            padding: 2px 7px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 800;
-            color: #fff;
-            letter-spacing: 0.5px;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            color: var(--text-secondary);
-            font-size: 17px;
-        }
-        .header-actions i:active { transform: scale(0.9); }
-
-        /* Search Header */
-        .search-rail {
-            padding: 12px 16px;
-            background: var(--app-bg);
-            border-bottom: 1px solid var(--border-line);
-        }
-
-        .search-box-pill {
-            background: #111726;
-            border: 1px solid var(--border-line);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.2s;
-        }
-        .search-box-pill:focus-within {
-            border-color: var(--accent-crimson);
-            box-shadow: 0 0 10px var(--accent-glow);
-        }
-
-        .search-box-pill input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: #fff;
-            font-size: 14px;
-            width: 100%;
-        }
-
-        /* Viewport Tab Contents */
-        .tab-panel {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        .tab-panel.hidden { display: none !important; }
-
-        /* Statuses/Stories Horizontal Rail */
-        .status-rail {
-            padding: 16px 14px;
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--border-line);
-            scrollbar-width: none;
-            background: rgba(14, 19, 29, 0.4);
-        }
-        .status-rail::-webkit-scrollbar { display: none; }
-
-        .status-node {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            min-width: 62px;
-        }
-
-        .status-ring {
-            width: 58px;
-            height: 58px;
-            border-radius: 50%;
-            padding: 2.5px;
-            background: linear-gradient(135deg, var(--accent-crimson), #3b82f6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .status-ring img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--app-bg);
-        }
-
-        .status-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            max-width: 62px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Feed List */
-        .directory-list {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .directory-item {
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            border-bottom: 1px solid var(--border-line);
-            cursor: pointer;
-            transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .directory-item:hover { background: #0f1523; }
-        .directory-item:active { background: #141c2e; }
-
-        .avatar-circle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid var(--border-line);
-            background: #182030;
-        }
-
-        .node-info {
-            flex: 1;
-        }
-        .node-title {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: -0.2px;
-        }
-        .node-sub {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        /* Chat Room Interactive Deck */
-        .active-room {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            background: #06070a;
-        }
-
-        .room-topbar {
-            height: 60px;
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            display: flex;
-            align-items: center;
-            padding: 0 16px;
-            gap: 12px;
-            border-bottom: 1px solid var(--border-line);
-        }
-
-        .room-feed {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .msg-node {
-            max-width: 76%;
-            padding: 10px 14px 7px;
-            border-radius: 18px;
-            font-size: 14px;
-            line-height: 1.45;
-            position: relative;
-            word-break: break-word;
-            animation: springUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes springUp {
-            from { opacity: 0; transform: translateY(12px) scale(0.96); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .msg-node.me {
-            align-self: flex-end;
-            background: linear-gradient(135deg, var(--bubble-sent), #881337);
-            color: #fff;
-            border-bottom-right-radius: 4px;
-            box-shadow: 0 4px 14px rgba(159, 18, 57, 0.3);
-        }
-
-        .msg-node.other {
-            align-self: flex-start;
-            background: var(--bubble-received);
-            color: #e2e8f0;
-            border-bottom-left-radius: 4px;
-            border: 1px solid var(--border-line);
-        }
-
-        .msg-node img {
-            max-width: 100%;
-            border-radius: 12px;
-            margin-top: 6px;
-            display: block;
-        }
-
-        .msg-meta-stamp {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.6);
-            float: right;
-            margin-left: 10px;
-            margin-top: 4px;
-        }
-
-        /* Dynamic Chat Input Tray */
-        .tray-bar {
-            padding: 10px 14px;
-            background: var(--nav-bg);
-            border-top: 1px solid var(--border-line);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .tray-input {
-            flex: 1;
-            background: #111726;
-            border: 1px solid var(--border-line);
-            border-radius: 24px;
-            padding: 11px 18px;
-            color: #fff;
-            font-size: 14px;
-            outline: none;
-        }
-
-        .tray-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent-crimson), #9f1239);
-            border: none;
-            color: white;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px var(--accent-glow);
-            transition: transform 0.15s;
-        }
-        .tray-btn:active { transform: scale(0.92); }
-
-        /* Profile Manager Tab */
-        .profile-deck {
-            padding: 30px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .dp-box {
-            position: relative;
-            width: 124px;
-            height: 124px;
-            margin-bottom: 24px;
-        }
-
-        .dp-box img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--accent-crimson);
-            box-shadow: 0 10px 30px var(--accent-glow);
-            background: #182030;
-        }
-
-        .dp-camera-badge {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: var(--accent-crimson);
-            border: 2px solid var(--app-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 15px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-            transition: transform 0.2s;
-        }
-        .dp-camera-badge:active { transform: scale(0.85); }
-
-        /* Bottom Glass Nav */
-        .bottom-shelf {
-            height: 64px;
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border-line);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 20;
-        }
-
-        .shelf-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: var(--text-tertiary);
-            cursor: pointer;
-            transition: color 0.2s, transform 0.2s;
-        }
-
-        .shelf-item i { font-size: 19px; }
-
-        .shelf-item.active {
-            color: var(--accent-crimson);
-            transform: translateY(-2px);
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<div class="phone-frame">
-    <!-- Top Global Header -->
-    <div class="header-bar">
-        <div class="header-brand">
-            DH CHAT <span class="brand-tag">PRO</span>
+<div class="app-viewport">
+    <!-- Top Header -->
+    <div class="top-header">
+        <div class="brand-badge">
+            <img id="customAppLogo" src="https://cdn-icons-png.flaticon.com/512/3670/3670157.png" style="width:26px; height:26px; border-radius: 6px; display: none;">
+            <span>WhatsApp</span>
         </div>
-        <div class="header-actions">
-            <i class="fa-solid fa-cloud-arrow-down" onclick="triggerPwaPrompt()" title="Install Native App"></i>
-            <i class="fa-solid fa-sliders" onclick="switchView('profileView')"></i>
-        </div>
-    </div>
-
-    <!-- VIEW 1: CONVERSATIONS / DIRECTORY -->
-    <div class="tab-panel" id="chatsView">
-        <div class="search-rail">
-            <div class="search-box-pill">
-                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-tertiary); font-size: 14px;"></i>
-                <input type="text" id="searchInput" placeholder="Search accounts by name or phone..." oninput="executeSearch(this.value)">
-            </div>
+        <div class="header-icons">
+            <i class="fa-solid fa-camera"></i>
+            <i class="fa-solid fa-ellipsis-vertical" onclick="toggleMenu()"></i>
         </div>
 
-        <div class="status-rail">
-            <div class="status-node" onclick="switchView('profileView')">
-                <div class="status-ring">
-                    <img id="myRailDp" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-                </div>
-                <div class="status-label">Your DP</div>
-            </div>
-            <div class="status-node" onclick="alert('Ephemeral encryption status: Active (10-min memory wipe)')">
-                <div class="status-ring" style="background: linear-gradient(135deg, #10b981, #065f46);">
-                    <img src="https://cdn-icons-png.flaticon.com/512/954/954591.png">
-                </div>
-                <div class="status-label">Shield</div>
-            </div>
-        </div>
-
-        <div class="directory-list" id="directoryResults">
-            <div style="padding: 40px 20px; text-align: center; color: var(--text-tertiary); font-size: 13px;">
-                Enter a registered identity in the search bar above to begin conversation.
-            </div>
+        <!-- 3-Dots Menu -->
+        <div class="menu-popup" id="menuDropdown">
+            <div class="menu-item" onclick="window.location.href='/profile.html'">Settings / Profile</div>
+            <div class="menu-item" onclick="triggerPwa()">Install App</div>
+            <div class="menu-item" style="color: #ff3b66;" onclick="logout()">Logout</div>
         </div>
     </div>
 
-    <!-- VIEW 2: ACTIVE SECURE CHAT -->
-    <div class="tab-panel hidden" id="chatRoomView">
-        <div class="active-room">
-            <div class="room-topbar">
-                <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary); cursor: pointer; font-size: 18px; padding-right: 6px;" onclick="closeActiveRoom()"></i>
-                <img id="peerDp" class="avatar-circle" style="width: 38px; height: 38px;" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-                <div style="flex: 1;">
-                    <div id="peerName" style="font-size: 15px; font-weight: 600;">Contact</div>
-                    <div id="peerPhone" style="font-size: 11px; color: var(--brand-green);">Active Peer</div>
-                </div>
-                <span style="font-size: 10px; background: rgba(225,29,72,0.15); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 4px 8px; border-radius: 8px;">10m Wipe</span>
-            </div>
-
-            <div class="room-feed" id="chatFeed"></div>
-
-            <div class="tray-bar">
-                <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="dispatchImage(event)">
-                <i class="fa-solid fa-image" style="color: var(--text-secondary); font-size: 20px; cursor: pointer; padding: 6px;" onclick="document.getElementById('imageInput').click()"></i>
-                <input type="text" id="textInput" class="tray-input" placeholder="Type encrypted message..." autocomplete="off">
-                <button class="tray-btn" onclick="dispatchText()"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
+    <!-- Search Bar -->
+    <div style="padding: 8px 14px; background: var(--bg-top);">
+        <div style="background: #111b21; border-radius: 20px; display: flex; align-items: center; padding: 7px 14px; gap: 10px;">
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); font-size: 14px;"></i>
+            <input type="text" id="liveSearchInput" placeholder="Ask Meta AI or Search" style="background: transparent; border:none; outline:none; color:#fff; width:100%; font-size:14px;" oninput="searchLiveUsers(this.value)">
         </div>
     </div>
 
-    <!-- VIEW 3: PROFILE IDENTITY & DP SELECTION -->
-    <div class="tab-panel hidden" id="profileView">
-        <div class="profile-deck">
-            <div class="dp-box">
-                <img id="profileCurrentDp" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-                <!-- Direct File Input for Gallery Photo -->
-                <input type="file" id="galleryDpSelector" accept="image/*" style="display: none;" onchange="processAndUploadDp(event)">
-                <div class="dp-camera-badge" onclick="document.getElementById('galleryDpSelector').click()" title="Select Image from Gallery">
-                    <i class="fa-solid fa-camera"></i>
-                </div>
+    <!-- Status Horizontal Bar (Updates) -->
+    <div class="status-tray" id="statusTray">
+        <div class="status-circle-node" onclick="window.location.href='/profile.html'">
+            <div class="status-ring my-ring">
+                <img id="myStatusImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+                <div class="status-plus-badge">+</div>
             </div>
-
-            <h2 id="profileDisplayName" style="font-size: 20px; font-weight: 700;">Account</h2>
-            <p id="profileDisplayPhone" style="color: var(--accent-crimson); font-size: 13px; margin-top: 4px; font-weight: 600;">+94</p>
-
-            <div style="width: 100%; max-width: 320px; margin-top: 36px; display: flex; flex-direction: column; gap: 14px;">
-                <button class="btn-official" style="background: #111726; border: 1px solid var(--border-line); color: #fff; padding: 13px; border-radius: 12px; font-size: 14px; cursor: pointer;" onclick="triggerPwaPrompt()">
-                    <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Install Native Application
-                </button>
-                <button class="btn-official" style="background: rgba(225,29,72,0.1); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 13px; border-radius: 12px; font-size: 14px; cursor: pointer;" onclick="terminateSession()">
-                    <i class="fa-solid fa-right-from-bracket" style="margin-right: 8px;"></i> Terminate Session
-                </button>
-            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">My status</span>
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar (WhatsApp/iOS Architecture) -->
-    <div class="bottom-shelf">
-        <div class="shelf-item active" id="tabChats" onclick="switchView('chatsView')">
-            <i class="fa-solid fa-comment-dots"></i>
-            <span>Chats</span>
+    <!-- Chats Scroll List -->
+    <div class="chats-scroll" id="chatsFeed">
+        <div style="text-align: center; color: var(--text-muted); padding: 40px 20px; font-size: 13px;">
+            Search an account by number to start real-time chat.
         </div>
-        <div class="shelf-item" id="tabUpdates" onclick="alert('Auto-delete security daemon active. Disappearing chats in 10 minutes.')">
-            <i class="fa-solid fa-circle-notch"></i>
-            <span>Security</span>
+    </div>
+
+    <!-- Active Private Chat Room Deck -->
+    <div id="liveChatDeck" style="position: absolute; inset:0; background: var(--bg-dark); display: none; flex-direction: column; z-index: 40;">
+        <div class="top-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-arrow-left" style="cursor: pointer;" onclick="closeLiveChat()"></i>
+                <img id="activeChatAvatar" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <div id="activeChatName" style="font-size: 15px; font-weight: 600;">Contact</div>
+                    <div id="activeChatPhone" style="font-size: 11px; color: var(--accent-green);">online</div>
+                </div>
+            </div>
         </div>
-        <div class="shelf-item" id="tabProfile" onclick="switchView('profileView')">
-            <i class="fa-solid fa-user-shield"></i>
-            <span>Identity</span>
+
+        <div style="flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px;" id="messageTrack"></div>
+
+        <div style="padding: 8px 12px; background: var(--bg-top); display: flex; align-items: center; gap: 8px;">
+            <input type="file" id="chatPhotoFile" accept="image/*" style="display: none;" onchange="sendPhotoMsg(event)">
+            <i class="fa-solid fa-camera" style="font-size: 20px; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chatPhotoFile').click()"></i>
+            <input type="text" id="liveMsgInput" placeholder="Message" style="flex:1; background: #111b21; border:none; outline:none; border-radius: 20px; padding: 10px 16px; color:#fff; font-size:14px;" autocomplete="off">
+            <button style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-green); border:none; color:white; cursor:pointer;" onclick="dispatchMsg()"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-tabs">
+        <a class="tab-btn active" href="/"><i class="fa-solid fa-comment-dots"></i><span>Chats</span></a>
+        <a class="tab-btn" href="javascript:alert('Status is active in the top tray!')"><i class="fa-solid fa-circle-notch"></i><span>Updates</span></a>
+        <a class="tab-btn" href="/profile.html"><i class="fa-solid fa-user"></i><span>Profile</span></a>
     </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script>
-    const userSession = JSON.parse(localStorage.getItem('dh_user') || 'null');
-    if (!userSession) window.location.replace('/login.html');
-
-    const socket = io();
-    let currentPeer = null;
-    let installPromptEvent;
-
-    // Service Worker Install
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        installPromptEvent = e;
-    });
-
-    function triggerPwaPrompt() {
-        if (installPromptEvent) {
-            installPromptEvent.prompt();
-            installPromptEvent.userChoice.then(() => installPromptEvent = null);
-        } else {
-            alert('To install app:\n• On Android (Chrome): Menu (⋮) → "Install app"\n• On iPhone (Safari): Share icon → "Add to Home Screen"');
-        }
-    }
-
-    // Refresh UI Profiles
-    function syncProfile() {
-        const fallback = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-        const dp = userSession.avatar || fallback;
-        document.getElementById('myRailDp').src = dp;
-        document.getElementById('profileCurrentDp').src = dp;
-        document.getElementById('profileDisplayName').innerText = userSession.name;
-        document.getElementById('profileDisplayPhone').innerText = userSession.phone;
-
-        socket.emit('register-socket', userSession.phone);
-    }
-    syncProfile();
-
-    // High Performance Client-Side Canvas Image Compression
-    // High-res phone photo එකක් upload කරද්දි crash නොවී optimize කරන function එක:
-    function processAndUploadDp(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const img = new Image();
-            img.onload = async function() {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 400;
-                const MAX_HEIGHT = 400;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // High quality JPEG compression
-                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-
-                // Send to Server
-                try {
-                    const res = await fetch('/api/profile/update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone: userSession.phone,
-                            avatar: optimizedBase64
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        userSession.avatar = optimizedBase64;
-                        localStorage.setItem('dh_user', JSON.stringify(userSession));
-                        syncProfile();
-                        alert('Official DP Synchronized Successfully ✅');
-                    } else {
-                        alert(data.error || 'Upload failed');
-                    }
-                } catch (err) {
-                    alert('Network error while saving DP');
-                }
-            };
-            img.src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // Tab Switching
-    function switchView(viewId) {
-        document.getElementById('chatsView').classList.add('hidden');
-        document.getElementById('chatRoomView').classList.add('hidden');
-        document.getElementById('profileView').classList.add('hidden');
-
-        document.getElementById('tabChats').classList.remove('active');
-        document.getElementById('tabProfile').classList.remove('active');
-
-        document.getElementById(viewId).classList.remove('hidden');
-
-        if (viewId === 'chatsView') document.getElementById('tabChats').classList.add('active');
-        if (viewId === 'profileView') document.getElementById('tabProfile').classList.add('active');
-    }
-
-    function closeActiveRoom() {
-        currentPeer = null;
-        switchView('chatsView');
-    }
-
-    // Search Engine
-    let debounce;
-    async function executeSearch(q) {
-        clearTimeout(debounce);
-        const container = document.getElementById('directoryResults');
-        if (!q.trim()) {
-            container.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: var(--text-tertiary); font-size: 13px;">Enter a registered identity in the search bar above to begin conversation.</div>`;
-            return;
-        }
-
-        debounce = setTimeout(async () => {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-            const accounts = await res.json();
-            container.innerHTML = '';
-
-            const filtered = accounts.filter(a => a.phone !== userSession.phone);
-            if (filtered.length === 0) {
-                container.innerHTML = `<div style="padding: 30px; text-align: center; color: var(--text-tertiary); font-size: 13px;">No matching identity found.</div>`;
-                return;
-            }
-
-            filtered.forEach(acc => {
-                const row = document.createElement('div');
-                row.className = 'directory-item';
-                row.innerHTML = `
-                    <img class="avatar-circle" src="${acc.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}">
-                    <div class="node-info">
-                        <div class="node-title">${acc.name}</div>
-                        <div class="node-sub">${acc.phone}</div>
-                    </div>
-                `;
-                row.onclick = () => initChatRoom(acc);
-                container.appendChild(row);
-            });
-        }, 250);
-    }
-
-    // Launch Chat
-    async function initChatRoom(peer) {
-        currentPeer = peer;
-        document.getElementById('peerName').innerText = peer.name;
-        document.getElementById('peerPhone').innerText = peer.phone;
-        document.getElementById('peerDp').src = peer.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-
-        switchView('chatRoomView');
-        const feed = document.getElementById('chatFeed');
-        feed.innerHTML = '';
-
-        const res = await fetch(`/api/messages?user1=${userSession.phone}&user2=${peer.phone}`);
-        const messages = await res.json();
-        messages.forEach(m => insertBubble(m));
-        feed.scrollTop = feed.scrollHeight;
-    }
-
-    // Send Message Logic
-    function dispatchText() {
-        const input = document.getElementById('textInput');
-        const text = input.value.trim();
-        if (!text || !currentPeer) return;
-
-        socket.emit('private-message', {
-            from: userSession.phone,
-            to: currentPeer.phone,
-            text: text
-        });
-        input.value = '';
-    }
-
-    document.getElementById('textInput').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') dispatchText();
-    });
-
-    function dispatchImage(e) {
-        const file = e.target.files[0];
-        if (!file || !currentPeer) return;
-
-        const reader = new FileReader();
-        reader.onload = function() {
-            socket.emit('private-message', {
-                from: userSession.phone,
-                to: currentPeer.phone,
-                image: reader.result
-            });
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // Socket Event Handling
-    socket.on('message-sent', (msg) => insertBubble(msg));
-    socket.on('receive-private-message', (msg) => {
-        if (currentPeer && msg.from === currentPeer.phone) {
-            insertBubble(msg);
-        } else {
-            alert(`Encrypted transmission from: ${msg.from}`);
-        }
-    });
-
-    function insertBubble(msg) {
-        const isMine = msg.from === userSession.phone;
-        const div = document.createElement('div');
-        div.className = `msg-node ${isMine ? 'me' : 'other'}`;
-
-        let payload = '';
-        if (msg.text) payload += `<div>${msg.text}</div>`;
-        if (msg.image) payload += `<img src="${msg.image}">`;
-        payload += `<span class="msg-meta-stamp">${msg.time}</span>`;
-
-        div.innerHTML = payload;
-        const feed = document.getElementById('chatFeed');
-        feed.appendChild(div);
-        feed.scrollTop = feed.scrollHeight;
-    }
-
-    function terminateSession() {
-        localStorage.removeItem('dh_user');
-        window.location.replace('/login.html');
-    }
-</script>
+<script src="/js/app.js"></script>
 </body>
 </html>
