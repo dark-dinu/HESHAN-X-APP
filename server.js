@@ -9,31 +9,44 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app);
 
-// 50MB payload limits for ultra HD images & canvas DPs
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Large limit for compressed DP and shared chat photos
+app.use(express.json({ limit: '30mb' }));
+app.use(express.urlencoded({ limit: '30mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const io = new Server(server, {
-  maxHttpBufferSize: 5e7 // 50MB buffer
+  cors: { origin: "*" },
+  maxHttpBufferSize: 3e7
 });
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/dhchat?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('DH-CHAT Official Engine Connected ✅'))
-  .catch(err => console.error('DB Error:', err));
+  .then(() => console.log('DH-CHAT Engine Online ✅'))
+  .catch(err => console.error('Database connection failed:', err));
 
 // Schemas
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  avatar: { type: String, default: '' },
-  bio: { type: String, default: 'Available' },
+  username: { type: String, default: '' },
+  avatar: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
+  about: { type: String, default: 'Hey there! I am using DH Chat.' },
+  links: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
-const User = mongoose.model('DhOfficialUser', userSchema);
+const User = mongoose.model('DhProUser', userSchema);
+
+const statusSchema = new mongoose.Schema({
+  phone: { type: String, required: true },
+  name: { type: String, required: true },
+  avatar: { type: String, required: true },
+  content: { type: String, default: '' }, // text or image
+  mediaType: { type: String, default: 'text' },
+  createdAt: { type: Date, default: Date.now, expires: 86400 } // 24 Hours auto-expire
+});
+const Status = mongoose.model('DhStatus', statusSchema);
 
 const messageSchema = new mongoose.Schema({
   from: { type: String, required: true },
@@ -41,25 +54,30 @@ const messageSchema = new mongoose.Schema({
   text: { type: String, default: null },
   image: { type: String, default: null },
   time: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 600 } // 10 Min auto-delete (RAM safe)
+  createdAt: { type: Date, default: Date.now, expires: 600 } // 10 Minutes auto-delete
 });
-const Message = mongoose.model('DhOfficialMessage', messageSchema);
+const Message = mongoose.model('DhProMessage', messageSchema);
 
-// Auth APIs
+// REST APIs
 app.post('/api/register', async (req, res) => {
   try {
     const { name, phone, password } = req.body;
-    if (!name || !phone || !password) return res.status(400).json({ error: 'All fields are mandatory.' });
-
+    if (!name || !phone || !password) return res.status(400).json({ error: 'All fields are required.' });
+    
     const cleanPhone = phone.trim();
-    const existing = await User.findOne({ phone: cleanPhone });
-    if (existing) return res.status(400).json({ error: 'Phone number already registered.' });
+    const exists = await User.findOne({ phone: cleanPhone });
+    if (exists) return res.status(400).json({ error: 'Phone number already registered.' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name: name.trim(), phone: cleanPhone, password: hashedPassword });
+    const user = new User({
+      name: name.trim(),
+      phone: cleanPhone,
+      password: hashedPassword,
+      username: name.trim().toLowerCase().replace(/\s+/g, '_')
+    });
     await user.save();
 
-    res.json({ success: true, user: { name: user.name, phone: user.phone, bio: user.bio, avatar: user.avatar } });
+    res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -72,41 +90,7 @@ app.post('/api/login', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'Account not found.' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials.' });
-
-    res.json({ success: true, user: { name: user.name, phone: user.phone, bio: user.bio, avatar: user.avatar } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/search', async (req, res) => {
-  try {
-    const query = req.query.q;
-    if (!query) return res.json([]);
-    const users = await User.find({
-      $or: [
-        { name: { $regex: query,$options: 'i' } },
-        { phone: { $regex: query,$options: 'i' } }
-      ]
-    }).select('name phone avatar bio').limit(15);
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Update Profile & DP (Direct base64 storage)
-app.post('/api/profile/update', async (req, res) => {
-  try {
-    const { phone, avatar, bio, name } = req.body;
-    const updateFields = {};
-    if (avatar !== undefined) updateFields.avatar = avatar;
-    if (bio !== undefined) updateFields.bio = bio;
-    if (name !== undefined) updateFields.name = name;
-
-    const user = await User.findOneAndUpdate({ phone }, updateFields, { new: true }).select('name phone avatar bio');
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!isMatch) return res.status(400).json({ error: 'Incorrect passcode.' });
 
     res.json({ success: true, user });
   } catch (err) {
@@ -114,7 +98,39 @@ app.post('/api/profile/update', async (req, res) => {
   }
 });
 
-// Load Private Chat
+app.post('/api/profile/update', async (req, res) => {
+  try {
+    const { phone, name, about, avatar, links } = req.body;
+    const update = {};
+    if (name) update.name = name;
+    if (about !== undefined) update.about = about;
+    if (avatar) update.avatar = avatar;
+    if (links !== undefined) update.links = links;
+
+    const user = await User.findOneAndUpdate({ phone }, update, { new: true });
+    if (!user) return res.status(404).json({ error: 'User missing' });
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/search', async (req, res) => {
+  try {
+    const q = req.query.q;
+    if (!q) return res.json([]);
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q,$options: 'i' } },
+        { phone: { $regex: q,$options: 'i' } }
+      ]
+    }).select('-password').limit(15);
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
@@ -130,13 +146,13 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-// Socket Logic
+// Socket Realtime Communication
 const activeSockets = {};
 
 io.on('connection', (socket) => {
   socket.on('register-socket', (phone) => {
     activeSockets[phone] = socket.id;
-    io.emit('online-status', Object.keys(activeSockets));
+    io.emit('online-peers', Object.keys(activeSockets));
   });
 
   socket.on('private-message', async (data) => {
@@ -161,9 +177,9 @@ io.on('connection', (socket) => {
         break;
       }
     }
-    io.emit('online-status', Object.keys(activeSockets));
+    io.emit('online-peers', Object.keys(activeSockets));
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`DH-CHAT Official Server on Port ${PORT}`));
+server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
