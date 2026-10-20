@@ -9,13 +9,13 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '30mb' }));
+app.use(express.urlencoded({ limit: '30mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const io = new Server(server, {
   cors: { origin: "*" },
-  maxHttpBufferSize: 5e7
+  maxHttpBufferSize: 3e7
 });
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/dhchat?retryWrites=true&w=majority&appName=Cluster0";
@@ -24,28 +24,13 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log('DH-CHAT Database Connected! ✅'))
   .catch(err => console.error('Database connection error:', err));
 
-// Logo Proxy Route (Browser/Catbox Block Fix)
-app.get('/api/logo', async (req, res) => {
-  try {
-    const fetch = (await import('node-fetch')).default || globalThis.fetch;
-    const response = await fetch('https://files.catbox.moe/rfq2cl.jpg');
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(buffer);
-  } catch (err) {
-    res.redirect('https://files.catbox.moe/rfq2cl.jpg');
-  }
-});
-
 // Schemas
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   username: { type: String, default: '' },
-  avatar: { type: String, default: '/api/logo' },
+  avatar: { type: String, default: '/logo.png' },
   about: { type: String, default: 'Hey there! I am using DH Chat.' },
   links: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
@@ -58,7 +43,7 @@ const messageSchema = new mongoose.Schema({
   text: { type: String, default: null },
   image: { type: String, default: null },
   time: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 600 } // Auto-delete in 10 minutes
+  createdAt: { type: Date, default: Date.now, expires: 600 } // Auto-delete in 10 minutes (RAM safe)
 });
 const Message = mongoose.model('DhProMessage', messageSchema);
 
@@ -78,7 +63,7 @@ app.post('/api/register', async (req, res) => {
       phone: cleanPhone,
       password: hashedPassword,
       username: name.trim().toLowerCase().replace(/\s+/g, '_'),
-      avatar: '/api/logo'
+      avatar: '/logo.png'
     });
     await user.save();
 
@@ -103,6 +88,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Profile Update API
 app.post('/api/profile/update', async (req, res) => {
   try {
     const { phone, name, about, avatar, links } = req.body;
@@ -120,6 +106,7 @@ app.post('/api/profile/update', async (req, res) => {
   }
 });
 
+// Search API
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q;
@@ -136,6 +123,7 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Messages API
 app.get('/api/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
@@ -151,7 +139,7 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-// Sockets
+// Real-time Sockets
 const activeSockets = {};
 
 io.on('connection', (socket) => {
@@ -187,4 +175,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+server.listen(PORT, () => console.log(`DH CHAT Server listening on port ${PORT}`));
