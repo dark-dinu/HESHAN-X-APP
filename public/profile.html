@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Profile</title>
+    <link rel="icon" href="/api/logo">
+    <link rel="apple-touch-icon" href="/api/logo">
+    <meta name="referrer" content="no-referrer">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <style>
@@ -14,14 +17,12 @@
             display: flex;
             flex-direction: column;
         }
-
         .avatar-wrap {
             margin: 20px auto 35px;
             position: relative;
             width: 145px;
             height: 145px;
         }
-
         .avatar-wrap img {
             width: 100%;
             height: 100%;
@@ -29,7 +30,6 @@
             object-fit: cover;
             border: 2px solid #202c33;
         }
-
         .cam-float-btn {
             position: absolute;
             bottom: 4px;
@@ -46,7 +46,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             font-size: 18px;
         }
-
         .info-cell {
             display: flex;
             align-items: flex-start;
@@ -55,7 +54,6 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             cursor: pointer;
         }
-
         .cell-icon {
             font-size: 18px;
             color: var(--text-muted);
@@ -63,7 +61,6 @@
             width: 24px;
             text-align: center;
         }
-
         .cell-details { flex: 1; }
         .cell-label { font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
         .cell-val { font-size: 15px; color: var(--text-primary); font-weight: 500; }
@@ -73,7 +70,6 @@
 <body>
 
 <div class="app-viewport">
-    <!-- Header -->
     <div class="top-header">
         <div style="display: flex; align-items: center; gap: 18px;">
             <i class="fa-solid fa-arrow-left" style="font-size: 18px; cursor: pointer;" onclick="window.location.href='/'"></i>
@@ -81,28 +77,24 @@
         </div>
     </div>
 
-    <!-- Exact UI from your Screenshot -->
     <div class="profile-deck">
         <div class="avatar-wrap">
-            <img id="profileImage" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-            <!-- Hidden Input for Direct File Selection -->
+            <img id="profileImage" src="/api/logo" onerror="this.src='https://files.catbox.moe/rfq2cl.jpg'">
             <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleDpChange(event)">
             <div class="cam-float-btn" onclick="document.getElementById('avatarFileInput').click()">
                 <i class="fa-solid fa-camera"></i>
             </div>
         </div>
 
-        <!-- Name -->
         <div class="info-cell" onclick="editField('name')">
             <div class="cell-icon"><i class="fa-regular fa-user"></i></div>
             <div class="cell-details">
                 <div class="cell-label">Name</div>
-                <div class="cell-val" id="dispName">Loading...</div>
+                <div class="cell-val" id="dispName">User</div>
             </div>
             <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
         </div>
 
-        <!-- About -->
         <div class="info-cell" onclick="editField('about')">
             <div class="cell-icon"><i class="fa-solid fa-circle-info"></i></div>
             <div class="cell-details">
@@ -112,7 +104,6 @@
             <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
         </div>
 
-        <!-- Reserved username -->
         <div class="info-cell">
             <div class="cell-icon"><i class="fa-solid fa-at"></i></div>
             <div class="cell-details">
@@ -121,7 +112,6 @@
             </div>
         </div>
 
-        <!-- Phone -->
         <div class="info-cell">
             <div class="cell-icon"><i class="fa-solid fa-phone"></i></div>
             <div class="cell-details">
@@ -130,22 +120,11 @@
             </div>
         </div>
 
-        <!-- Links -->
         <div class="info-cell" onclick="editField('links')">
             <div class="cell-icon"><i class="fa-solid fa-link"></i></div>
             <div class="cell-details">
                 <div class="cell-label">Links</div>
                 <div class="cell-val green" id="dispLinks">Add links</div>
-            </div>
-            <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
-        </div>
-
-        <!-- App Logo Customization (ඔයාට දුන් URL එක දාන්න මේක ක්ලික් කරන්න) -->
-        <div class="info-cell" onclick="updateAppLogoUrl()">
-            <div class="cell-icon"><i class="fa-solid fa-image"></i></div>
-            <div class="cell-details">
-                <div class="cell-label">App Logo (URL)</div>
-                <div class="cell-val green" id="dispAppLogo">Change Custom App Logo URL</div>
             </div>
             <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
         </div>
