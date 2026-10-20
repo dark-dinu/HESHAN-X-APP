@@ -4,18 +4,18 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#08090c",
-  "theme_color": "#0b141a",
+  "background_color": "#030406",
+  "theme_color": "#202c33",
   "icons": [
     {
-      "src": "https://files.catbox.moe/rfq2cl.jpg",
+      "src": "/api/logo",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "https://files.catbox.moe/rfq2cl.jpg",
+      "src": "/api/logo",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
