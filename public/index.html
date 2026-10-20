@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="/css/style.css">
     
     <style>
-        /* Screen lock (No jumpy/bouncy layout) */
         html, body {
             position: fixed;
             width: 100%;
@@ -58,7 +57,6 @@
             background-blend-mode: overlay;
         }
 
-        /* Fixed Bottom Tray */
         .chat-bottom-tray {
             flex-shrink: 0;
             min-height: 62px;
@@ -119,16 +117,99 @@
             box-shadow: 0 2px 8px rgba(0,168,132,0.4);
             transition: all 0.2s;
         }
-
         .action-round-btn.recording {
             background: #e11d48;
             animation: pulseRecord 1s infinite;
         }
-
         @keyframes pulseRecord {
             0% { transform: scale(1); }
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
+        }
+
+        /* Message Bubbles & Ticks */
+        .msg-bubble {
+            max-width: 80%;
+            padding: 8px 12px 6px;
+            border-radius: 12px;
+            font-size: 14.5px;
+            position: relative;
+            word-break: break-word;
+            display: flex;
+            flex-direction: column;
+        }
+        .msg-bubble.me {
+            align-self: flex-end;
+            background: #005c4b;
+            color: #fff;
+            border-top-right-radius: 2px;
+        }
+        .msg-bubble.other {
+            align-self: flex-start;
+            background: #202c33;
+            color: #e9edef;
+            border-top-left-radius: 2px;
+        }
+        .msg-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            margin-top: 4px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.65);
+        }
+        .tick-icon { font-size: 11px; margin-left: 2px; }
+        .tick-icon.blue { color: #53bdeb; }
+
+        /* Delete Button on Long press or Hover */
+        .delete-msg-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #e11d48;
+            color: #fff;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            border: 1px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .msg-bubble:hover .delete-msg-btn { display: flex; }
+
+        /* Unread Red Badge in Chat List */
+        .unread-badge {
+            background: #e11d48;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            box-shadow: 0 2px 6px rgba(225, 29, 72, 0.5);
+        }
+
+        /* Online status indicator dot */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #8696a0;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .status-dot.online {
+            background: #00a884;
+            box-shadow: 0 0 6px #00a884;
         }
 
         /* Emoji Tray */
@@ -209,12 +290,12 @@
     <!-- Bottom Navigation Bar -->
     <div class="bottom-tabs">
         <a class="tab-btn active" href="/"><i class="fa-solid fa-comment-dots"></i><span>Chats</span></a>
-        <a class="tab-btn" href="javascript:alert('10-Minute Disappearing Security Engine active!')"><i class="fa-solid fa-circle-notch"></i><span>Updates</span></a>
+        <a class="tab-btn" href="javascript:alert('1-Hour Disappearing Security Engine active!')"><i class="fa-solid fa-circle-notch"></i><span>Updates</span></a>
         <a class="tab-btn" href="/profile.html"><i class="fa-solid fa-user"></i><span>Profile</span></a>
     </div>
 </div>
 
-<!-- Active Private Chat Deck (Full Screen Locked) -->
+<!-- Active Private Chat Deck -->
 <div id="liveChatDeck">
     <div class="chat-topbar">
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -222,10 +303,12 @@
             <img id="activeChatAvatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.src='/logo.png'">
             <div>
                 <div id="activeChatName" style="font-size: 15px; font-weight: 600; color: #e9edef;">Contact</div>
-                <div id="activeChatPhone" style="font-size: 11px; color: #00a884;">online</div>
+                <div id="activeChatOnlineStatus" style="font-size: 11px; display: flex; align-items: center; color: #8696a0;">
+                    <span class="status-dot" id="chatStatusDot"></span> <span id="chatStatusText">offline</span>
+                </div>
             </div>
         </div>
-        <span style="font-size: 10px; background: rgba(225,29,72,0.15); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 3px 8px; border-radius: 8px;">10m Wipe</span>
+        <span style="font-size: 10px; background: rgba(225,29,72,0.15); border: 1px solid rgba(225,29,72,0.3); color: #fb7185; padding: 3px 8px; border-radius: 8px;">1h Wipe</span>
     </div>
 
     <div class="chat-scroll-area" id="messageTrack"></div>
@@ -260,7 +343,6 @@
             </button>
         </div>
 
-        <!-- Dynamic Send / Mic Button -->
         <button type="button" class="action-round-btn" id="actionBtn" onclick="handleActionClick()">
             <i class="fa-solid fa-microphone" id="actionIcon"></i>
         </button>
@@ -274,14 +356,46 @@
 
     const socket = io();
     let currentPeer = null;
+    let onlinePeersList = [];
+    let unreadCounts = {}; // { phone: count }
 
-    // Audio recording state
+    // Audio Notification Sound (WhatsApp Tone)
+    const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+
+    // Request Web Notification permission
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    // Audio Recording
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
 
     socket.emit('register-socket', user.phone);
     document.getElementById('myStatusImg').src = user.avatar || '/logo.png';
+
+    // Track Online/Offline Status
+    socket.on('online-peers', (peers) => {
+        onlinePeersList = peers;
+        updateChatPeerStatus();
+    });
+
+    function updateChatPeerStatus() {
+        if (!currentPeer) return;
+        const isOnline = onlinePeersList.includes(currentPeer.phone);
+        const dot = document.getElementById('chatStatusDot');
+        const text = document.getElementById('chatStatusText');
+        if (isOnline) {
+            dot.className = 'status-dot online';
+            text.innerText = 'online';
+            text.style.color = '#00a884';
+        } else {
+            dot.className = 'status-dot';
+            text.innerText = 'offline';
+            text.style.color = '#8696a0';
+        }
+    }
 
     function toggleMenu() {
         document.getElementById('menuDropdown').classList.toggle('show');
@@ -302,11 +416,11 @@
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then(() => deferredPrompt = null);
         } else {
-            alert('Chrome Menu (⋮) -> "Install App" or "Add to Home Screen"');
+            alert('Chrome Menu (⋮) -> "Install App"');
         }
     }
 
-    // Live Search
+    // Live Search Users
     let searchTimeout;
     function searchLiveUsers(q) {
         clearTimeout(searchTimeout);
@@ -319,13 +433,25 @@
             feed.innerHTML = '';
 
             list.filter(u => u.phone !== user.phone).forEach(peer => {
+                const count = unreadCounts[peer.phone] || 0;
+                const isOnline = onlinePeersList.includes(peer.phone);
                 const row = document.createElement('div');
                 row.className = 'chat-row';
+                row.id = `chat-row-${peer.phone}`;
                 row.innerHTML = `
-                    <img class="chat-row-avatar" src="${peer.avatar || '/logo.png'}">
+                    <div style="position: relative;">
+                        <img class="chat-row-avatar" src="${peer.avatar || '/logo.png'}">
+                        <span class="status-dot ${isOnline ? 'online' : ''}" style="position: absolute; bottom: 2px; right: 2px;"></span>
+                    </div>
                     <div class="chat-row-content">
-                        <div class="chat-row-title"><span>${peer.name}</span><span class="chat-row-time">Active</span></div>
-                        <div class="chat-row-sub">${peer.about || peer.phone}</div>
+                        <div class="chat-row-title">
+                            <span>${peer.name}</span>
+                            <span class="chat-row-time" style="color: ${isOnline ? '#00a884' : '#8696a0'}">${isOnline ? 'Online' : 'Offline'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px;">
+                            <div class="chat-row-sub">${peer.about || peer.phone}</div>
+                            ${count > 0 ? `<div class="unread-badge" id="badge-${peer.phone}">${count}</div>` : `<div class="unread-badge" id="badge-${peer.phone}" style="display:none;"></div>`}
+                        </div>
                     </div>
                 `;
                 row.onclick = () => openChatDeck(peer);
@@ -334,13 +460,18 @@
         }, 250);
     }
 
-    // Open Chat
+    // Open Chat & Mark Seen (Blue Ticks)
     async function openChatDeck(peer) {
         currentPeer = peer;
         document.getElementById('activeChatName').innerText = peer.name;
-        document.getElementById('activeChatPhone').innerText = peer.phone;
         document.getElementById('activeChatAvatar').src = peer.avatar || '/logo.png';
         document.getElementById('liveChatDeck').style.display = 'flex';
+        updateChatPeerStatus();
+
+        // Clear Unread Badge
+        unreadCounts[peer.phone] = 0;
+        const b = document.getElementById(`badge-${peer.phone}`);
+        if (b) b.style.display = 'none';
 
         const track = document.getElementById('messageTrack');
         track.innerHTML = '';
@@ -349,6 +480,9 @@
         const messages = await res.json();
         messages.forEach(m => appendBubble(m));
         track.scrollTop = track.scrollHeight;
+
+        // Tell server that messages are read (Blue Ticks)
+        socket.emit('mark-as-read', { senderPhone: peer.phone, readerPhone: user.phone });
     }
 
     function closeLiveChat() {
@@ -357,7 +491,6 @@
         document.getElementById('emojiPanel').classList.remove('show');
     }
 
-    // Dynamic Button Switching
     function toggleActionBtn() {
         const text = document.getElementById('liveMsgInput').value.trim();
         const icon = document.getElementById('actionIcon');
@@ -373,7 +506,6 @@
         }
     }
 
-    // Emoji Controls
     function toggleEmojiTray() {
         document.getElementById('emojiPanel').classList.toggle('show');
     }
@@ -385,7 +517,7 @@
         toggleActionBtn();
     }
 
-    // Message Dispatch
+    // Send Message
     function dispatchMsg() {
         const input = document.getElementById('liveMsgInput');
         const text = input.value.trim();
@@ -405,7 +537,6 @@
         if (e.key === 'Enter') dispatchMsg();
     });
 
-    // Image Message
     function sendPhotoMsg(e) {
         const file = e.target.files[0];
         if (file && currentPeer) {
@@ -421,7 +552,7 @@
         }
     }
 
-    // Voice Notes
+    // Voice Notes Record
     async function toggleVoiceRecord() {
         const btn = document.getElementById('actionBtn');
         if (!isRecording) {
@@ -461,30 +592,94 @@
         }
     }
 
-    // Sockets Listeners
-    socket.on('message-sent', (msg) => appendBubble(msg));
+    // Delete message request
+    function requestDeleteMessage(msgId) {
+        if (confirm("Delete this message for everyone?")) {
+            socket.emit('delete-message', { messageId: msgId, to: currentPeer ? currentPeer.phone : '' });
+        }
+    }
+
+    // Socket Event Handlers
+    socket.on('message-sent', (msg) => {
+        appendBubble(msg);
+    });
+
     socket.on('receive-private-message', (msg) => {
+        // Play notification sound
+        notificationSound.play().catch(() => {});
+
+        // Web Browser Notification if not focused
+        if (Notification.permission === "granted" && document.hidden) {
+            new Notification(`New message from ${msg.from}`, {
+                body: msg.text || 'Photo/Audio message',
+                icon: '/logo.png'
+            });
+        }
+
         if (currentPeer && msg.from === currentPeer.phone) {
             appendBubble(msg);
+            socket.emit('mark-as-read', { senderPhone: msg.from, readerPhone: user.phone });
+        } else {
+            // Increment unread count & show red badge
+            unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
+            const b = document.getElementById(`badge-${msg.from}`);
+            if (b) {
+                b.innerText = unreadCounts[msg.from];
+                b.style.display = 'flex';
+            }
         }
     });
 
+    // When opponent reads messages (Turn Double Blue Ticks)
+    socket.on('messages-seen', ({ by }) => {
+        if (currentPeer && currentPeer.phone === by) {
+            document.querySelectorAll('.tick-icon').forEach(tick => {
+                tick.className = 'fa-solid fa-check-double tick-icon blue';
+            });
+        }
+    });
+
+    // Delete message update
+    socket.on('message-deleted', ({ messageId }) => {
+        const el = document.getElementById(`msg-${messageId}`);
+        if (el) el.remove();
+    });
+
+    // Helper: Render Message Bubble with Ticks & Delete option
     function appendBubble(msg) {
         const isMe = msg.from === user.phone;
         const div = document.createElement('div');
-        div.style.maxWidth = '78%';
-        div.style.padding = '8px 12px';
-        div.style.borderRadius = '10px';
-        div.style.fontSize = '14px';
-        div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
-        div.style.background = isMe ? 'var(--bubble-sent)' : 'var(--bubble-received)';
-        div.style.color = '#fff';
+        div.className = `msg-bubble ${isMe ? 'me' : 'other'}`;
+        div.id = `msg-${msg._id}`;
 
         let body = '';
+        // Delete button for sent messages
+        if (isMe) {
+            body += `<div class="delete-msg-btn" onclick="requestDeleteMessage('${msg._id}')" title="Delete Message"><i class="fa-solid fa-trash"></i></div>`;
+        }
+
         if (msg.text) body += `<div>${msg.text}</div>`;
         if (msg.image) body += `<img src="${msg.image}" style="max-width:100%; border-radius:8px; margin-top:4px;">`;
         if (msg.audio) body += `<audio controls src="${msg.audio}" style="margin-top:4px;"></audio>`;
-        body += `<span style="font-size:10px; color:rgba(255,255,255,0.6); float:right; margin-left:8px; margin-top:4px;">${msg.time}</span>`;
+
+        // WhatsApp Style Ticks
+        let ticks = '';
+        if (isMe) {
+            if (msg.status === 'read') {
+                ticks = `<i class="fa-solid fa-check-double tick-icon blue"></i>`;
+            } else if (msg.status === 'delivered') {
+                ticks = `<i class="fa-solid fa-check-double tick-icon"></i>`;
+            } else {
+                ticks = `<i class="fa-solid fa-check tick-icon"></i>`;
+            }
+        }
+
+        body += `
+            <div class="msg-footer">
+                <span>${msg.time}</span>
+                ${ticks}
+            </div>
+        `;
 
         div.innerHTML = body;
         const track = document.getElementById('messageTrack');
