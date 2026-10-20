@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .profile-deck {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .avatar-wrap {
+            margin: 20px auto 35px;
+            position: relative;
+            width: 145px;
+            height: 145px;
+        }
+
+        .avatar-wrap img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #202c33;
+        }
+
+        .cam-float-btn {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #00a884;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            font-size: 18px;
+        }
+
+        .info-cell {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .cell-icon {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .cell-details { flex: 1; }
+        .cell-label { font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
+        .cell-val { font-size: 15px; color: var(--text-primary); font-weight: 500; }
+        .cell-val.green { color: #00a884; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="app-viewport">
+    <!-- Header -->
+    <div class="top-header">
+        <div style="display: flex; align-items: center; gap: 18px;">
+            <i class="fa-solid fa-arrow-left" style="font-size: 18px; cursor: pointer;" onclick="window.location.href='/'"></i>
+            <span style="font-size: 18px; font-weight: 600;">Profile</span>
+        </div>
+    </div>
+
+    <!-- Exact UI from your Screenshot -->
+    <div class="profile-deck">
+        <div class="avatar-wrap">
+            <img id="profileImage" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+            <!-- Hidden Input for Direct File Selection -->
+            <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleDpChange(event)">
+            <div class="cam-float-btn" onclick="document.getElementById('avatarFileInput').click()">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+        </div>
+
+        <!-- Name -->
+        <div class="info-cell" onclick="editField('name')">
+            <div class="cell-icon"><i class="fa-regular fa-user"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">Name</div>
+                <div class="cell-val" id="dispName">Loading...</div>
+            </div>
+            <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
+        </div>
+
+        <!-- About -->
+        <div class="info-cell" onclick="editField('about')">
+            <div class="cell-icon"><i class="fa-solid fa-circle-info"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">About</div>
+                <div class="cell-val green" id="dispAbout">Set About</div>
+            </div>
+            <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
+        </div>
+
+        <!-- Reserved username -->
+        <div class="info-cell">
+            <div class="cell-icon"><i class="fa-solid fa-at"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">Reserved username</div>
+                <div class="cell-val" id="dispUsername">username</div>
+            </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="info-cell">
+            <div class="cell-icon"><i class="fa-solid fa-phone"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">Phone</div>
+                <div class="cell-val" id="dispPhone">+94 xxxxxxxxx</div>
+            </div>
+        </div>
+
+        <!-- Links -->
+        <div class="info-cell" onclick="editField('links')">
+            <div class="cell-icon"><i class="fa-solid fa-link"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">Links</div>
+                <div class="cell-val green" id="dispLinks">Add links</div>
+            </div>
+            <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
+        </div>
+
+        <!-- App Logo Customization (ඔයාට දුන් URL එක දාන්න මේක ක්ලික් කරන්න) -->
+        <div class="info-cell" onclick="updateAppLogoUrl()">
+            <div class="cell-icon"><i class="fa-solid fa-image"></i></div>
+            <div class="cell-details">
+                <div class="cell-label">App Logo (URL)</div>
+                <div class="cell-val green" id="dispAppLogo">Change Custom App Logo URL</div>
+            </div>
+            <i class="fa-solid fa-pen" style="color: var(--text-muted); font-size: 13px;"></i>
+        </div>
+    </div>
+</div>
+
+<script src="/js/profile.js"></script>
+</body>
+</html>
