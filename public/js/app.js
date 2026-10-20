@@ -1,20 +1,12 @@
 const user = JSON.parse(localStorage.getItem('dh_user') || 'null');
 if (!user) window.location.replace('/login.html');
 
-// Custom App Logo check
-const customLogo = localStorage.getItem('dh_app_logo');
-if (customLogo) {
-    const logoEl = document.getElementById('customAppLogo');
-    logoEl.src = customLogo;
-    logoEl.style.display = 'block';
-}
-
 const socket = io();
 let currentPeer = null;
 
 // Register device to socket
 socket.emit('register-socket', user.phone);
-if (user.avatar) document.getElementById('myStatusImg').src = user.avatar;
+document.getElementById('myStatusImg').src = user.avatar || '/logo.png';
 
 function toggleMenu() {
     document.getElementById('menuDropdown').classList.toggle('show');
@@ -25,7 +17,22 @@ window.onclick = function(e) {
     }
 }
 
-// Live Search
+// PWA trigger
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+});
+function triggerPwaPrompt() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => deferredPrompt = null);
+    } else {
+        alert('Chrome Menu (⋮) -> "Install App" or "Add to Home Screen"');
+    }
+}
+
+// Search
 let searchTimeout;
 function searchLiveUsers(q) {
     clearTimeout(searchTimeout);
@@ -41,7 +48,7 @@ function searchLiveUsers(q) {
             const row = document.createElement('div');
             row.className = 'chat-row';
             row.innerHTML = `
-                <img class="chat-row-avatar" src="${peer.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}">
+                <img class="chat-row-avatar" src="${peer.avatar || '/logo.png'}">
                 <div class="chat-row-content">
                     <div class="chat-row-title"><span>${peer.name}</span><span class="chat-row-time">Active</span></div>
                     <div class="chat-row-sub">${peer.about || peer.phone}</div>
@@ -53,12 +60,12 @@ function searchLiveUsers(q) {
     }, 250);
 }
 
-// Open Chat
+// Chat Room Actions
 async function openChatDeck(peer) {
     currentPeer = peer;
     document.getElementById('activeChatName').innerText = peer.name;
     document.getElementById('activeChatPhone').innerText = peer.phone;
-    document.getElementById('activeChatAvatar').src = peer.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+    document.getElementById('activeChatAvatar').src = peer.avatar || '/logo.png';
     document.getElementById('liveChatDeck').style.display = 'flex';
 
     const track = document.getElementById('messageTrack');
@@ -75,7 +82,6 @@ function closeLiveChat() {
     document.getElementById('liveChatDeck').style.display = 'none';
 }
 
-// Send Message
 function dispatchMsg() {
     const input = document.getElementById('liveMsgInput');
     const text = input.value.trim();
@@ -108,7 +114,7 @@ function sendPhotoMsg(e) {
     }
 }
 
-// Live Reception
+// Socket Listeners
 socket.on('message-sent', (msg) => appendBubble(msg));
 socket.on('receive-private-message', (msg) => {
     if (currentPeer && msg.from === currentPeer.phone) {
