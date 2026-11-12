@@ -88,10 +88,10 @@ export async function POST(req: Request) {
       media = pickMedia(r.json, {})
     }
 
-    // Server එකෙන් TikWM backup try කිරීම
+    // Server-side TikWM backup
     if (!media && platform === 'tiktok') {
       try {
-        const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(12000) })
+        const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
         const tj = await tr.json()
         const link = isAudio ? tj?.data?.music : (tj?.data?.hdplay || tj?.data?.play)
         if (link) {
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       } catch {}
     }
 
-    // Render server එකෙන් block වුණොත් browser එකට direct mode signal එක යැවීම
+    // Render IP block වුණොත් Phone Browser එකෙන් direct ගන්න signal එක යැවීම
     if (!media && platform === 'tiktok') {
       return NextResponse.json({ clientFallback: 'tiktok', url: input, isAudio })
     }
