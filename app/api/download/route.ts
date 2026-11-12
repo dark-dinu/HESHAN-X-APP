@@ -1,165 +1,112 @@
 import { NextResponse } from 'next/server'
 import { sealLink } from '@/lib/vault'
+import { pickMedia, pickTitle } from '@/lib/extract'
+import { PLATFORM_IDS } from '@/config/platforms'
 
-const API_BASE = (process.env.CHAMINDU_API_BASE || 'https://api.chamindu.site/api/v1').trim()
-const API_KEY = (process.env.CHAMINDU_API_KEY || 'chama_api_9c55e3c6d014abbdf65054f9046a920b').trim()
+export const runtime = 'nodejs'
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
-async function expandShortUrl(rawUrl: string): Promise<string> {
-  if (!/^https?:\/\//i.test(rawUrl)) return rawUrl
-  if (
-    rawUrl.includes('vt.tiktok.com') ||
-    rawUrl.includes('vm.tiktok.com') ||
-    rawUrl.includes('pin.it') ||
-    rawUrl.includes('fb.watch') ||
-    rawUrl.includes('youtu.be')
-  ) {
+const API_BASE = (process.env.CHAMINDU_API_BASE || 'https://api.chamindu.site/api/v1').trim().replace(/\/$/, '')
+const API_KEY = (process.env.CHAMINDU_API_KEY || '').trim()
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
+const SHORT = /(^|\.)(vt\.tiktok\.com|vm\.tiktok\.com|pin\.it|fb\.watch|spotify\.link)$/i
+const JUNK = /^(utm_|si$|feature$|igsh|fbclid|is_from_webapp|sender_device|web_id|_t$|_r$|share_)/i
+
+// Expand short links + strip tracking params (but keep ?v= for YouTube / Facebook)
+async function normalize(raw: string): Promise<string> {
+  let u: URL
+  try { u = new URL(raw) } catch { return raw }
+  if (u.hostname === 'youtu.be') return `https://www.youtube.com/watch?v=${u.pathname.slice(1)}`
+  if (SHORT.test(u.hostname) || /facebook\.com$/.test(u.hostname) && u.pathname.startsWith('/share/')) {
     try {
-      const res = await fetch(rawUrl, {
-        method: 'GET',
-        redirect: 'follow',
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
-        },
-      })
-      if (res.url && res.url.startsWith('http')) {
-        return res.url.split('?')[0]
-      }
+      const r = await fetch(raw, { redirect: 'follow', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) })
+      r.body?.cancel().catch(() => {})
+      if (r.url) u = new URL(r.url)
     } catch {}
   }
-  return rawUrl
+  for (const k of [...u.searchParams.keys()]) if (JUNK.test(k)) u.searchParams.delete(k)
+  if (/tiktok\.com$|instagram\.com$|pinterest\.com$/.test(u.hostname)) u.search = ''
+  return u.toString()
 }
 
-function extractMediaUrl(obj: any, preferAudio = false): string | null {
-  if (!obj) return null
-  if (typeof obj === 'string' && obj.startsWith('http')) return obj
-  if (typeof obj !== 'object') return null
-
-  const audioKeys = ['mp3', 'audio', 'music', 'sound', 'download_url', 'downloadUrl', 'url', 'link']
-  const videoKeys = [
-    'hdplay', 'no_watermark', 'nowm', 'play', 'hd', 'video',
-    'download_url', 'downloadUrl', 'mp4', 'sd', 'dp', 'profilePic', 'image', 'url', 'link',
-  ]
-
-  const keys = preferAudio ? audioKeys : videoKeys
-
-  for (const key of keys) {
-    if (typeof obj[key] === 'string' && obj[key].startsWith('http')) {
-      return obj[key]
-    }
+async function getJson(url: string) {
+  try {
+    const r = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'User-Agent': UA, Accept: 'application/json', 'x-api-key': API_KEY },
+      signal: AbortSignal.timeout(30000),
+    })
+    const text = await r.text()
+    let json: any = null
+    try { json = JSON.parse(text) } catch {}
+    return { status: r.status, json }
+  } catch (e: any) {
+    return { status: 0, json: null, err: e?.name === 'TimeoutError' ? 'Timeout' : 'Network error' }
   }
-
-  for (const val of Object.values(obj)) {
-    const found = extractMediaUrl(val, preferAudio)
-    if (found) return found
-  }
-  return null
 }
+
+const fail = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
 export async function POST(req: Request) {
   try {
-    const { url, platform, format } = await req.json()
-    let input = (url || '').trim()
-    if (!input) {
-      return NextResponse.json({ error: 'Link එකක් හෝ අංකයක් ඇතුළත් කරන්න' }, { status: 400 })
-    }
+    const body = await req.json().catch(() => ({}))
+    const platform = String(body.platform || '')
+    const format = String(body.format || '')
+    let input = String(body.url || '').trim()
 
-    if (platform !== 'whatsapp') {
-      input = await expandShortUrl(input)
-    }
+    if (!input) return fail('Link එකක් හෝ අංකයක් ඇතුළත් කරන්න')
+    if (!PLATFORM_IDS.includes(platform)) return fail('Platform එක හඳුනාගත නොහැක')
+    if (!API_KEY) return fail('Server එකේ CHAMINDU_API_KEY set කර නැහැ (.env / Vercel Environment Variables බලන්න)', 500)
+
+    if (platform !== 'whatsapp' && platform !== 'spotify') input = await normalize(input)
+    if (platform === 'spotify' && /^https?:\/\//i.test(input)) input = input.split('?')[0]
 
     const enc = encodeURIComponent(input)
-    let targetUrl = ''
-    let ext = 'mp4'
-    const isAudio = format === 'mp3' || format === '320kbps'
+    const k = `&api_key=${API_KEY}`
+    const audio = format === 'mp3' || format === '320kbps'
+    let target = ''
+    let image = false
+    let defExt = audio ? 'mp3' : 'mp4'
 
     switch (platform) {
       case 'youtube':
-        if (isAudio) {
-          targetUrl = `${API_BASE}/youtube/mp3?url=${enc}&quality=320kbps&api_key=${API_KEY}`
-          ext = 'mp3'
-        } else if (input.includes('/shorts/')) {
-          targetUrl = `${API_BASE}/media/ytshorts/download?url=${enc}&quality=1080&api_key=${API_KEY}`
-        } else {
-          targetUrl = `${API_BASE}/youtube/mp4?url=${enc}&quality=${format || '1080p'}&api_key=${API_KEY}`
-        }
+        target = audio ? `${API_BASE}/youtube/mp3?url=${enc}&quality=320kbps${k}`
+          : input.includes('/shorts/') ? `${API_BASE}/media/ytshorts/download?url=${enc}&quality=1080${k}`
+          : `${API_BASE}/youtube/mp4?url=${enc}&quality=${format || '1080p'}${k}`
         break
-
-      case 'tiktok':
-        targetUrl = `${API_BASE}/tiktok?url=${enc}&api_key=${API_KEY}`
-        if (isAudio) ext = 'mp3'
+      case 'tiktok': target = `${API_BASE}/tiktok?url=${enc}${k}`; break
+      case 'instagram': target = `${API_BASE}/media/instagram?url=${enc}${k}`; break
+      case 'facebook': target = `${API_BASE}/facebook/c2?url=${enc}${k}`; break
+      case 'spotify': target = `${API_BASE}/spotify/download?q=${enc}&quality=320kbps${k}`; defExt = 'mp3'; break
+      case 'pinterest': target = `${API_BASE}/media/pinterest/infodl?q=${enc}${k}`; break
+      case 'x': target = `${API_BASE}/media/twitter?url=${enc}${k}`; break
+      case 'whatsapp':
+        target = `${API_BASE}/media/whatsapp_dp/infodl?q=${input.replace(/\D/g, '')}${k}`
+        image = true; defExt = 'jpg'
         break
+    }
+    const isAudio = platform === 'spotify' || audio
 
-      case 'instagram':
-        targetUrl = `${API_BASE}/media/instagram?url=${enc}&api_key=${API_KEY}`
-        break
+    let r = await getJson(target)
+    let media = pickMedia(r.json, { audio: isAudio, image })
 
-      case 'facebook':
-        targetUrl = `${API_BASE}/facebook/c2?url=${enc}&api_key=${API_KEY}`
-        break
-
-      case 'spotify':
-        targetUrl = `${API_BASE}/spotify/download?q=${enc}&quality=320kbps&api_key=${API_KEY}`
-        ext = 'mp3'
-        break
-
-      case 'pinterest':
-        targetUrl = `${API_BASE}/media/pinterest/infodl?q=${enc}&api_key=${API_KEY}`
-        break
-
-      case 'x':
-        targetUrl = `${API_BASE}/media/twitter?url=${enc}&api_key=${API_KEY}`
-        break
-
-      case 'whatsapp': {
-        const cleanNum = input.replace(/[^0-9]/g, '')
-        targetUrl = `${API_BASE}/media/whatsapp_dp/infodl?q=${cleanNum}&api_key=${API_KEY}`
-        ext = 'jpg'
-        break
-      }
-
-      default:
-        return NextResponse.json({ error: 'Platform එක හඳුනාගත නොහැක' }, { status: 400 })
+    if (!media && platform === 'youtube' && !audio) {
+      const q = (format || '1080p').replace('p', '')
+      r = await getJson(`${API_BASE}/youtube/savetube/mp4?url=${enc}&quality=${q}${k}`)
+      media = pickMedia(r.json, {})
     }
 
-    const fetchOpts = {
-      cache: 'no-store' as RequestCache,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'application/json',
-        'x-api-key': API_KEY,
-      },
+    if (!media) {
+      const why = r.json?.message || r.json?.error || (r as any).err || `Status ${r.status}`
+      return fail(`මීඩියා ලබාගැනීමට නොහැකි විය (${why}). Link එක public ද කියා බලන්න.`, 404)
     }
 
-    let upstream = await fetch(targetUrl, fetchOpts)
-    let json = upstream.ok ? await upstream.json() : null
-
-    if (platform === 'youtube' && !isAudio && !extractMediaUrl(json)) {
-      const qNum = (format || '1080p').replace('p', '')
-      const fallbackUrl = `${API_BASE}/youtube/savetube/mp4?url=${enc}&quality=${qNum}&api_key=${API_KEY}`
-      upstream = await fetch(fallbackUrl, fetchOpts)
-      json = upstream.ok ? await upstream.json() : null
-    }
-
-    const mediaUrl = extractMediaUrl(json, isAudio)
-    if (!mediaUrl) {
-      const apiMsg = json?.message || json?.error || `Status ${upstream.status}`
-      return NextResponse.json(
-        { error: `මීඩියා ලබාගැනීමට නොහැකි විය (${apiMsg})` },
-        { status: 404 }
-      )
-    }
-
-    const rawTitle = json?.title || json?.result?.title || json?.data?.title || `HESHAN_OFC_${platform}`
-    const safeTitle = String(rawTitle).slice(0, 50)
-    const token = sealLink(mediaUrl, `${safeTitle}.${ext}`)
-
-    return NextResponse.json({
-      token,
-      title: safeTitle,
-      ext,
-    })
+    const ext = media.ext || defExt
+    const title = (pickTitle(r.json) || `HESHAN_OFC_${platform}`).replace(/[\\/:*?"<>|\n\r]/g, ' ').trim().slice(0, 60)
+    const token = sealLink(media.url, `${title}.${ext}`)
+    return NextResponse.json({ token, title, ext, platform })
   } catch (e: any) {
-    return NextResponse.json({ error: `Server දෝෂයකි: ${e.message || 'Error'}` }, { status: 500 })
+    return fail(`Server දෝෂයකි: ${e?.message || 'Error'}`, 500)
   }
 }
