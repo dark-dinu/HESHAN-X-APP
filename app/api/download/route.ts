@@ -86,6 +86,7 @@ export async function POST(req: Request) {
       media = pickMedia(r.json, {})
     }
 
+    // TikTok සඳහා Direct CDN Link + Cover Image (Proxy stream block නොවී කෙලින්ම phone එකෙන් download වීමට)
     if (!media && platform === 'tiktok') {
       try {
         const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
@@ -93,15 +94,12 @@ export async function POST(req: Request) {
         const link = isAudio ? tj?.data?.music : (tj?.data?.hdplay || tj?.data?.play)
         if (link) {
           const fullUrl = link.startsWith('http') ? link : `https://www.tikwm.com${link}`
+          const rawCover = tj?.data?.cover || tj?.data?.origin_cover || ''
+          const thumb = rawCover ? (rawCover.startsWith('http') ? rawCover : `https://www.tikwm.com${rawCover}`) : ''
           const tTitle = String(tj?.data?.title || 'HESHAN_OFC_TikTok').slice(0, 50)
-          const thumb = tj?.data?.cover || tj?.data?.origin_cover || ''
-          const token = sealLink(fullUrl, `${tTitle}.${defExt}`)
-          return NextResponse.json({ token, title: tTitle, ext: defExt, platform, thumb })
+          return NextResponse.json({ token: '', directHref: fullUrl, title: tTitle, ext: defExt, platform, thumb })
         }
       } catch {}
-    }
-
-    if (!media && platform === 'tiktok') {
       return NextResponse.json({ clientFallback: 'tiktok', url: input, isAudio })
     }
 
@@ -113,7 +111,7 @@ export async function POST(req: Request) {
     const title = (pickTitle(r.json) || `HESHAN_OFC_${platform}`).replace(/[\\/:*?"<>|\n\r]/g, ' ').trim().slice(0, 55)
     const thumb = pickThumb(r.json) || (image ? media.url : '')
     const token = sealLink(media.url, `${title}.${ext}`)
-    return NextResponse.json({ token, title, ext, platform, thumb })
+    return NextResponse.json({ token, directHref: media.url, title, ext, platform, thumb })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
