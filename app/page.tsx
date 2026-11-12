@@ -25,21 +25,13 @@ export default function HomePage() {
     dl.reset()
   }
 
-  function onInput(val: string, autoStart = false) {
+  function onInput(val: string) {
     setUrl(val)
-    const clean = val.trim()
-    const d = detectPlatform(clean)
-    const targetPlat = d || plat
-
+    const d = detectPlatform(val)
     if (d && d.id !== plat.id) {
       setPlat(d)
       setFmtIdx(0)
       dl.reset()
-    }
-
-    if ((autoStart || /^https?:\/\//i.test(clean)) && clean.length > 10 && !dl.busy) {
-      const defaultFmt = (d && d.id !== plat.id ? d.formats[0]?.id : targetPlat.formats[fmtIdx]?.id) || 'hd'
-      dl.run({ url: clean, platform: targetPlat.id, format: defaultFmt })
     }
   }
 
@@ -52,7 +44,7 @@ export default function HomePage() {
     }
     try {
       const text = await navigator.clipboard.readText()
-      if (text) onInput(text, true)
+      if (text) onInput(text)
     } catch {
       inputRef.current?.focus()
     }
@@ -73,7 +65,7 @@ export default function HomePage() {
         Download <em key={plat.id}>{plat.name}</em> Media
       </h1>
       <p className="sub fade" style={{ ['--i' as any]: 2 }}>
-        Paste any link or number. Auto-detects & fetches instantly.
+        Paste any link or number. Platform will be auto-detected.
       </p>
 
       <div className="plats fade" style={{ ['--i' as any]: 3 }}>
@@ -108,17 +100,7 @@ export default function HomePage() {
 
         <div className="fmt">
           {plat.formats.map((f, i) => (
-            <button
-              key={f.id}
-              type="button"
-              className={i === fmtIdx ? 'on' : ''}
-              onClick={() => {
-                setFmtIdx(i)
-                if (url.trim() && !dl.busy) {
-                  dl.run({ url: url.trim(), platform: plat.id, format: f.id })
-                }
-              }}
-            >
+            <button key={f.id} type="button" className={i === fmtIdx ? 'on' : ''} onClick={() => setFmtIdx(i)}>
               {f.label}
             </button>
           ))}
