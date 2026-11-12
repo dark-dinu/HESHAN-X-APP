@@ -1,28 +1,35 @@
 import { NextResponse } from 'next/server'
-import { MongoClient, Db } from 'mongodb'
+import mongoose from 'mongoose'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const ALL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'spotify', 'pinterest', 'x', 'whatsapp']
 
-let cachedClient: MongoClient | null = null
-let cachedDb: Db | null = null
-
-async function getDb(): Promise<Db> {
-  if (cachedDb) return cachedDb
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) return
   const uri = process.env.MONGODB_URI
-  if (!uri) throw new Error('MONGODB_URI is missing in environment variables')
-
-  cachedClient = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 })
-  await cachedClient.connect()
-  cachedDb = cachedClient.db('heshan_x_app')
-  return cachedDb
+  if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
 }
+
+const PresenceSchema = new mongoose.Schema({
+  sid: { type: String, unique: true },
+  lastSeen: { type: Date, default: Date.now },
+})
+
+const StatsSchema = new mongoose.Schema({
+  key: { type: String, unique: true },
+  downloads: { type: Map, of: Number, default: {} },
+  total: { type: Number, default: 0 },
+})
+
+const Presence = mongoose.models.Presence || mongoose.model('Presence', PresenceSchema)
+const Stats = mongoose.models.Stats || mongoose.model('Stats', StatsSchema)
 
 export async function GET(req: Request) {
   try {
-    const db = await getDb()
+    await connectDB()
     const { searchParams } = new URL(req.url)
     const sid =
       searchParams.get('sid') ||
@@ -30,30 +37,29 @@ export async function GET(req: Request) {
       'anonymous'
 
     const now = new Date()
-    const activeCutoff = new Date(now.getTime() - 60_000) // තත්පර 60ක් ඇතුළත active users
+    const activeCutoff = new Date(now.getTime() - 60_000)
 
-    // 1. Real Online User presence update කිරීම
-    const presence = db.collection('presence')
-    await presence.updateOne({ sid }, { $set: { lastSeen: now } }, { upsert: true })
-    await presence.deleteMany({ lastSeen: { $lt: activeCutoff } })
-    const onlineUsers = await presence.countDocuments({ lastSeen: { $gte: activeCutoff } })
+    // 1. Real Active Online Users update කිරීම
+    await Presence.updateOne({ sid }, { $set: { lastSeen: now } }, { upsert: true })
+    await Presence.deleteMany({ lastSeen: { $lt: activeCutoff } })
+    const onlineUsers = await Presence.countDocuments({ lastSeen: { $gte: activeCutoff } })
 
     // 2. Real Download Counts ලබා ගැනීම
-    const statsDoc = await db.collection('stats').findOne({ _id: 'global' as any })
+    const doc = await Stats.findOne({ key: 'global' }).lean() as any
+    const rawDownloads = doc?.downloads || {}
+
     const counts: Record<string, number> = {}
     let totalDownloads = 0
 
     for (const p of ALL_PLATFORMS) {
-      const val = Number(statsDoc?.downloads?.[p] || 0)
+      const val = Number(rawDownloads[p] || 0)
       counts[p] = val
       totalDownloads += val
     }
 
-    // වැඩිපුරම download වුණ platform එක (Top Trending)
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
     const topPlatform = totalDownloads > 0 && sorted[0][1] > 0 ? sorted[0][0] : 'No data yet'
 
-    // Real Percentages ගණනය කිරීම
     const percentages: Record<string, number> = {}
     for (const [p, count] of Object.entries(counts)) {
       percentages[p] = totalDownloads > 0 ? Math.round((count / totalDownloads) * 100) : 0
@@ -82,16 +88,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid platform' }, { status: 400 })
     }
 
-    const db = await getDb()
-    await db.collection('stats').updateOne(
-      { _id: 'global' as any },
-      {
-        $inc: {
-          [`downloads.${platform}`]: 1,
-          total: 1,
-        },
-        $set: { updatedAt: new Date() },
-      },
+    await connectDB()
+    await Stats.updateOne(
+      { key: 'global' },
+      { $inc: { [`downloads.${platform}`]: 1, total: 1 } },
       { upsert: true }
     )
 
