@@ -6,30 +6,20 @@ export const dynamic = 'force-dynamic'
 
 const ALL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'spotify', 'pinterest', 'x', 'whatsapp']
 
-async function connectDB() {
-  if (mongoose.connection.readyState === 1) return
-  const uri = process.env.MONGODB_URI
-  if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
+async function getNativeDb() {
+  if (mongoose.connection.readyState !== 1) {
+    const uri = process.env.MONGODB_URI
+    if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
+  }
+  const db = mongoose.connection.db
+  if (!db) throw new Error('Database connection not initialized')
+  return db
 }
-
-const PresenceSchema = new mongoose.Schema({
-  sid: { type: String, unique: true },
-  lastSeen: { type: Date, default: Date.now },
-})
-
-const StatsSchema = new mongoose.Schema({
-  key: { type: String, unique: true },
-  downloads: { type: Map, of: Number, default: {} },
-  total: { type: Number, default: 0 },
-})
-
-const Presence = mongoose.models.Presence || mongoose.model('Presence', PresenceSchema)
-const Stats = mongoose.models.Stats || mongoose.model('Stats', StatsSchema)
 
 export async function GET(req: Request) {
   try {
-    await connectDB()
+    const db = await getNativeDb()
     const { searchParams } = new URL(req.url)
     const sid =
       searchParams.get('sid') ||
@@ -40,13 +30,15 @@ export async function GET(req: Request) {
     const activeCutoff = new Date(now.getTime() - 60_000)
 
     // 1. Real Active Online Users update කිරීම
-    await Presence.updateOne({ sid }, { $set: { lastSeen: now } }, { upsert: true })
-    await Presence.deleteMany({ lastSeen: { $lt: activeCutoff } })
-    const onlineUsers = await Presence.countDocuments({ lastSeen: { $gte: activeCutoff } })
+    const presence = db.collection('presence')
+    await presence.updateOne({ sid }, { $set: { lastSeen: now } }, { upsert: true })
+    await presence.deleteMany({ lastSeen: { $lt: activeCutoff } })
+    const onlineUsers = await presence.countDocuments({ lastSeen: { $gte: activeCutoff } })
 
     // 2. Real Download Counts ලබා ගැනීම
-    const doc = await Stats.findOne({ key: 'global' }).lean() as any
-    const rawDownloads = doc?.downloads || {}
+    const statsCol = db.collection('stats')
+    const doc = await statsCol.findOne({ key: 'global' })
+    const rawDownloads = (doc?.downloads || {}) as Record<string, number>
 
     const counts: Record<string, number> = {}
     let totalDownloads = 0
@@ -88,8 +80,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid platform' }, { status: 400 })
     }
 
-    await connectDB()
-    await Stats.updateOne(
+    const db = await getNativeDb()
+    await db.collection('stats').updateOne(
       { key: 'global' },
       { $inc: { [`downloads.${platform}`]: 1, total: 1 } },
       { upsert: true }
