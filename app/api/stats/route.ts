@@ -6,20 +6,21 @@ export const dynamic = 'force-dynamic'
 
 const ALL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'spotify', 'pinterest', 'x', 'whatsapp']
 
-async function getNativeDb() {
-  if (mongoose.connection.readyState !== 1) {
+async function getDb() {
+  const m = mongoose as any
+  if (m.connection.readyState !== 1) {
     const uri = process.env.MONGODB_URI
     if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 })
+    await m.connect(uri, { serverSelectionTimeoutMS: 5000 })
   }
-  const db = mongoose.connection.db
-  if (!db) throw new Error('Database connection not initialized')
+  const db = m.connection.db
+  if (!db) throw new Error('Database not connected')
   return db
 }
 
 export async function GET(req: Request) {
   try {
-    const db = await getNativeDb()
+    const db = await getDb()
     const { searchParams } = new URL(req.url)
     const sid =
       searchParams.get('sid') ||
@@ -29,13 +30,11 @@ export async function GET(req: Request) {
     const now = new Date()
     const activeCutoff = new Date(now.getTime() - 60_000)
 
-    // 1. Real Active Online Users update කිරීම
     const presence = db.collection('presence')
     await presence.updateOne({ sid }, { $set: { lastSeen: now } }, { upsert: true })
     await presence.deleteMany({ lastSeen: { $lt: activeCutoff } })
     const onlineUsers = await presence.countDocuments({ lastSeen: { $gte: activeCutoff } })
 
-    // 2. Real Download Counts ලබා ගැනීම
     const statsCol = db.collection('stats')
     const doc = await statsCol.findOne({ key: 'global' })
     const rawDownloads = (doc?.downloads || {}) as Record<string, number>
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid platform' }, { status: 400 })
     }
 
-    const db = await getNativeDb()
+    const db = await getDb()
     await db.collection('stats').updateOne(
       { key: 'global' },
       { $inc: { [`downloads.${platform}`]: 1, total: 1 } },
