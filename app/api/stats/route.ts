@@ -1,64 +1,59 @@
 import { NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { ActiveUser, GlobalStats } from '@/models/SiteStats'
+import { PLATFORM_IDS } from '@/config/platforms'
 
 export const dynamic = 'force-dynamic'
+
+const empty = { db: false, onlineUsers: 0, totalDownloads: 0, categories: {}, percentages: {}, recent: [] }
 
 export async function GET(req: Request) {
   try {
     await connectDB()
-    const { searchParams } = new URL(req.url)
-    const sid = searchParams.get('sid')
-
-    if (sid) {
-      await ActiveUser.findOneAndUpdate(
-        { sessionId: sid },
-        { lastActive: new Date() },
-        { upsert: true }
-      )
+    const sid = new URL(req.url).searchParams.get('sid')
+    if (sid && /^[\w-]{6,40}$/.test(sid)) {
+      await ActiveUser.updateOne({ sessionId: sid }, { $set: { lastActive: new Date() } }, { upsert: true })
     }
 
-    const [onlineCount, doc] = await Promise.all([
-      ActiveUser.countDocuments(),
+    const [online, doc] = await Promise.all([
+      ActiveUser.countDocuments({ lastActive: { $gte: new Date(Date.now() - 35000) } }),
       GlobalStats.findOneAndUpdate(
         { key: 'main' },
         { $setOnInsert: { key: 'main', totalDownloads: 0 } },
-        { upsert: true, new: true }
+        { upsert: true, new: true, lean: true }
       ),
     ])
 
-    const cats = doc.categories || {}
-    const sum = Object.values(cats).reduce((a: number, b: any) => a + Number(b || 0), 0)
+    const cats: Record<string, number> = (doc as any)?.categories || {}
+    const sum = Object.values(cats).reduce((a, b) => a + Number(b || 0), 0)
+    const percentages: Record<string, number> = {}
+    for (const id of PLATFORM_IDS) percentages[id] = sum ? Math.round(((cats[id] || 0) / sum) * 100) : 0
 
     return NextResponse.json({
-      onlineUsers: onlineCount,
-      totalDownloads: doc.totalDownloads || 0,
-      percentages: {
-        tiktok: sum ? Math.round(((cats.tiktok || 0) / sum) * 100) : 0,
-        youtube: sum ? Math.round(((cats.youtube || 0) / sum) * 100) : 0,
-        instagram: sum ? Math.round(((cats.instagram || 0) / sum) * 100) : 0,
-        facebook: sum ? Math.round(((cats.facebook || 0) / sum) * 100) : 0,
-      },
+      db: true,
+      onlineUsers: online,
+      totalDownloads: (doc as any)?.totalDownloads || 0,
+      categories: cats,
+      percentages,
+      recent: ((doc as any)?.recent || []).slice(-6).reverse(),
     })
-  } catch (e: any) {
-    return NextResponse.json({
-      onlineUsers: 0,
-      totalDownloads: 0,
-      percentages: { tiktok: 0, youtube: 0, instagram: 0, facebook: 0 },
-    })
+  } catch {
+    return NextResponse.json(empty)
   }
 }
 
+// Called when the user actually clicks "Save File"
 export async function POST(req: Request) {
   try {
-    await connectDB()
     const { platform } = await req.json()
-    const incObj: Record<string, number> = { totalDownloads: 1 }
-    if (platform) incObj[`categories.${platform}`] = 1
-
-    await GlobalStats.findOneAndUpdate(
+    if (!PLATFORM_IDS.includes(platform)) return NextResponse.json({ ok: false }, { status: 400 })
+    await connectDB()
+    await GlobalStats.updateOne(
       { key: 'main' },
-      { $inc: incObj },
+      {
+        $inc: { totalDownloads: 1, [`categories.${platform}`]: 1 },
+        $push: { recent: { $each: [{ p: platform, t: new Date() }], $slice: -8 } },
+      },
       { upsert: true }
     )
     return NextResponse.json({ ok: true })
