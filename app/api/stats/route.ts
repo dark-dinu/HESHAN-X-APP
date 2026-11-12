@@ -6,13 +6,20 @@ export const dynamic = 'force-dynamic'
 
 const ALL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'spotify', 'pinterest', 'x', 'whatsapp']
 
+const MONGO_URI = 'mongodb+srv://diniduheshan2007_db_user:SZD7sfcIU6Einajx@cluster0.ah8jggk.mongodb.net/dark-dinu?retryWrites=true&w=majority&appName=Cluster0'
+
 async function getDb() {
   const m = mongoose as any
   if (m.connection.readyState !== 1) {
     let uri = (process.env.MONGODB_URI || '').trim()
     uri = uri.replace(/^MONGODB_URI\s*=\s*/i, '').replace(/^["']+|["']+$/g, '').trim()
 
-    if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
+    if (!/^mongodb(\+srv)?:\/\//i.test(uri)) {
+      uri = MONGO_URI
+    }
+
+    uri = uri.replace(/^mongodb(\+srv)?:\/\//i, (match) => match.toLowerCase())
+
     await m.connect(uri, { serverSelectionTimeoutMS: 5000 })
   }
   const db = m.connection.db
