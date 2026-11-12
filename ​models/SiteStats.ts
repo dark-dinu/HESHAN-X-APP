@@ -5,19 +5,12 @@ const ActiveUserSchema = new Schema({
   lastActive: { type: Date, default: Date.now, expires: 40 },
 })
 
+const cat = { type: Number, default: 0 }
 const GlobalStatsSchema = new Schema({
   key: { type: String, default: 'main', unique: true },
   totalDownloads: { type: Number, default: 0 },
-  categories: {
-    youtube: { type: Number, default: 0 },
-    tiktok: { type: Number, default: 0 },
-    instagram: { type: Number, default: 0 },
-    facebook: { type: Number, default: 0 },
-    spotify: { type: Number, default: 0 },
-    pinterest: { type: Number, default: 0 },
-    x: { type: Number, default: 0 },
-    whatsapp: { type: Number, default: 0 },
-  },
+  categories: { youtube: cat, tiktok: cat, instagram: cat, facebook: cat, spotify: cat, pinterest: cat, x: cat, whatsapp: cat },
+  recent: [{ _id: false, p: String, t: Date }],
 })
 
 export const ActiveUser = models.ActiveUser || mongoose.model('ActiveUser', ActiveUserSchema)
