@@ -70,10 +70,14 @@ export async function POST(req: Request) {
       case 'spotify': target = `${API_BASE}/spotify/download?q=${enc}&quality=320kbps${k}`; defExt = 'mp3'; break
       case 'pinterest': target = `${API_BASE}/media/pinterest/infodl?q=${enc}${k}`; break
       case 'x': target = `${API_BASE}/media/twitter?url=${enc}${k}`; break
-      case 'whatsapp':
-        target = `${API_BASE}/media/whatsapp_dp/infodl?q=${input.replace(/\D/g, '')}${k}`
+      case 'whatsapp': {
+        // 07xxxxxxxx නම් auto 947xxxxxxxx බවට හැරවීම
+        let num = input.replace(/\D/g, '')
+        if (num.startsWith('0') && num.length === 10) num = '94' + num.slice(1)
+        target = `${API_BASE}/media/whatsapp_dp/infodl?q=${num}${k}`
         image = true; defExt = 'jpg'
         break
+      }
     }
 
     const isAudio = platform === 'spotify' || audio
@@ -86,7 +90,7 @@ export async function POST(req: Request) {
       media = pickMedia(r.json, {})
     }
 
-    // TikTok සඳහා Direct CDN Link + Cover Image (Proxy stream block නොවී කෙලින්ම phone එකෙන් download වීමට)
+    // TikTok සඳහා Direct CDN Link + Cover Image
     if (!media && platform === 'tiktok') {
       try {
         const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
@@ -104,14 +108,18 @@ export async function POST(req: Request) {
     }
 
     if (!media) {
-      return NextResponse.json({ error: 'Unable to fetch media. Please check if the link is public.' }, { status: 404 })
+      return NextResponse.json({
+        error: platform === 'whatsapp'
+          ? 'Profile picture not found or privacy is set to private.'
+          : 'Unable to fetch media. Please check if the link is public.',
+      }, { status: 404 })
     }
 
     const ext = media.ext || defExt
     const title = (pickTitle(r.json) || `HESHAN_OFC_${platform}`).replace(/[\\/:*?"<>|\n\r]/g, ' ').trim().slice(0, 55)
     const thumb = pickThumb(r.json) || (image ? media.url : '')
     const token = sealLink(media.url, `${title}.${ext}`)
-    return NextResponse.json({ token, directHref: media.url, title, ext, platform, thumb })
+    return NextResponse.json({ token, title, ext, platform, thumb })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
