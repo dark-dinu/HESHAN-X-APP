@@ -19,17 +19,43 @@ export default function HomePage() {
     s.setProperty('--a2', plat.colorSecondary)
   }, [plat])
 
-  function pick(p: PlatformConfig) { setPlat(p); setFmtIdx(0); dl.reset() }
+  function pick(p: PlatformConfig) {
+    setPlat(p)
+    setFmtIdx(0)
+    dl.reset()
+  }
 
-  function onInput(val: string) {
+  function onInput(val: string, autoStart = false) {
     setUrl(val)
-    const d = detectPlatform(val)
-    if (d && d.id !== plat.id) { setPlat(d); setFmtIdx(0); dl.reset() }
+    const clean = val.trim()
+    const d = detectPlatform(clean)
+    const targetPlat = d || plat
+
+    if (d && d.id !== plat.id) {
+      setPlat(d)
+      setFmtIdx(0)
+      dl.reset()
+    }
+
+    if ((autoStart || /^https?:\/\//i.test(clean)) && clean.length > 10 && !dl.busy) {
+      const defaultFmt = (d && d.id !== plat.id ? d.formats[0]?.id : targetPlat.formats[fmtIdx]?.id) || 'hd'
+      dl.run({ url: clean, platform: targetPlat.id, format: defaultFmt })
+    }
   }
 
   async function clip() {
-    if (url) { setUrl(''); dl.reset(); inputRef.current?.focus(); return }
-    try { onInput(await navigator.clipboard.readText()) } catch { inputRef.current?.focus() }
+    if (url) {
+      setUrl('')
+      dl.reset()
+      inputRef.current?.focus()
+      return
+    }
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) onInput(text, true)
+    } catch {
+      inputRef.current?.focus()
+    }
   }
 
   function submit(e: FormEvent) {
@@ -40,14 +66,21 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="hero-tag fade" style={{ ['--i' as any]: 0 }}><span /> Encrypted Proxy • All-In-One Media Engine</div>
-      <h1 className="fade" style={{ ['--i' as any]: 1 }}><em key={plat.id}>{plat.name}</em> මීඩියා බාගන්න</h1>
-      <p className="sub fade" style={{ ['--i' as any]: 2 }}>Link එක paste කරන්න. Platform එක auto-detect වේ.</p>
+      <div className="hero-tag fade" style={{ ['--i' as any]: 0 }}>
+        <span /> Encrypted Proxy • All-In-One Media Engine
+      </div>
+      <h1 className="fade" style={{ ['--i' as any]: 1 }}>
+        Download <em key={plat.id}>{plat.name}</em> Media
+      </h1>
+      <p className="sub fade" style={{ ['--i' as any]: 2 }}>
+        Paste any link or number. Auto-detects & fetches instantly.
+      </p>
 
       <div className="plats fade" style={{ ['--i' as any]: 3 }}>
         {PLATFORMS.map((p) => (
           <button key={p.id} type="button" className={p.id === plat.id ? 'on' : ''} onClick={() => pick(p)}>
-            <i>{p.icon}</i>{p.name}
+            <i>{p.icon}</i>
+            {p.name}
           </button>
         ))}
       </div>
@@ -55,16 +88,39 @@ export default function HomePage() {
       <form className="box fade" style={{ ['--i' as any]: 4 }} onSubmit={submit}>
         <div className="row">
           <div className="input-wrap">
-            <input ref={inputRef} value={url} onChange={(e) => onInput(e.target.value)} placeholder={plat.placeholder}
-              inputMode={plat.id === 'whatsapp' ? 'tel' : 'url'} autoComplete="off" spellCheck={false} />
-            <button type="button" className="action-chip" onClick={clip}>{url ? 'Clear' : 'Paste'}</button>
+            <input
+              ref={inputRef}
+              value={url}
+              onChange={(e) => onInput(e.target.value)}
+              placeholder={plat.placeholder}
+              inputMode={plat.id === 'whatsapp' ? 'tel' : 'url'}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button type="button" className="action-chip" onClick={clip}>
+              {url ? 'Clear' : 'Paste'}
+            </button>
           </div>
-          <button className="btn" type="submit" disabled={busy(dl.busy, url)}>{dl.busy ? <span className="spin" /> : 'Download'}</button>
+          <button className="btn" type="submit" disabled={busy(dl.busy, url)}>
+            {dl.busy ? <span className="spin" /> : 'Download'}
+          </button>
         </div>
 
         <div className="fmt">
           {plat.formats.map((f, i) => (
-            <button key={f.id} type="button" className={i === fmtIdx ? 'on' : ''} onClick={() => setFmtIdx(i)}>{f.label}</button>
+            <button
+              key={f.id}
+              type="button"
+              className={i === fmtIdx ? 'on' : ''}
+              onClick={() => {
+                setFmtIdx(i)
+                if (url.trim() && !dl.busy) {
+                  dl.run({ url: url.trim(), platform: plat.id, format: f.id })
+                }
+              }}
+            >
+              {f.label}
+            </button>
           ))}
         </div>
 
