@@ -9,7 +9,9 @@ const ALL_PLATFORMS = ['youtube', 'tiktok', 'instagram', 'facebook', 'spotify', 
 async function getDb() {
   const m = mongoose as any
   if (m.connection.readyState !== 1) {
-    const uri = process.env.MONGODB_URI
+    let uri = (process.env.MONGODB_URI || '').trim()
+    uri = uri.replace(/^MONGODB_URI\s*=\s*/i, '').replace(/^["']+|["']+$/g, '').trim()
+
     if (!uri) throw new Error('MONGODB_URI is missing in Render Environment Variables')
     await m.connect(uri, { serverSelectionTimeoutMS: 5000 })
   }
@@ -38,6 +40,7 @@ export async function GET(req: Request) {
     const statsCol = db.collection('stats')
     const doc = await statsCol.findOne({ key: 'global' })
     const rawDownloads = (doc?.downloads || {}) as Record<string, number>
+    const recent = Array.isArray(doc?.recent) ? doc.recent.slice(0, 8) : []
 
     const counts: Record<string, number> = {}
     let totalDownloads = 0
@@ -48,25 +51,27 @@ export async function GET(req: Request) {
       totalDownloads += val
     }
 
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
-    const topPlatform = totalDownloads > 0 && sorted[0][1] > 0 ? sorted[0][0] : 'No data yet'
-
     const percentages: Record<string, number> = {}
     for (const [p, count] of Object.entries(counts)) {
       percentages[p] = totalDownloads > 0 ? Math.round((count / totalDownloads) * 100) : 0
     }
 
     return NextResponse.json({
+      db: true,
       onlineUsers: Math.max(1, onlineUsers),
       totalDownloads,
-      topPlatform,
       percentages,
+      recent,
     })
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || 'Database connection failed' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      db: false,
+      error: err?.message || 'Database connection failed',
+      onlineUsers: 0,
+      totalDownloads: 0,
+      percentages: {},
+      recent: [],
+    })
   }
 }
 
@@ -82,7 +87,16 @@ export async function POST(req: Request) {
     const db = await getDb()
     await db.collection('stats').updateOne(
       { key: 'global' },
-      { $inc: { [`downloads.${platform}`]: 1, total: 1 } },
+      {
+        $inc: { [`downloads.${platform}`]: 1, total: 1 },
+        $push: {
+          recent: {
+            $each: [{ p: platform, t: new Date().toISOString() }],
+            $position: 0,
+            $slice: 10,
+          },
+        },
+      },
       { upsert: true }
     )
 
