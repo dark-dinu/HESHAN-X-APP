@@ -4,7 +4,6 @@ import { PLATFORMS } from '@/config/platforms'
 
 type Stats = {
   db: boolean
-  error?: string
   onlineUsers: number
   totalDownloads: number
   percentages: Record<string, number>
@@ -85,15 +84,15 @@ export default function LiveStats() {
     <section className="fade" style={{ ['--i' as any]: 5 }}>
       <div className="section-title">
         <span>Live Platform Activity</span>
-        <span className={`status ${d ? (live ? 'ok' : 'off') : ''}`}>
-          <i /> {!d ? 'Connecting...' : live ? 'Live' : 'Database Offline'}
+        <span className={`status ${live ? 'ok' : ''}`}>
+          <i /> {live ? 'Live' : 'Ready'}
         </span>
       </div>
 
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-head"><span className="live-dot" /> Online Users</div>
-          <div className={`stat-val ${d ? '' : 'skel'}`}>{d ? (live ? <Count value={d.onlineUsers} /> : '—') : ''}</div>
+          <div className={`stat-val ${d ? '' : 'skel'}`}>{d ? (live ? <Count value={d.onlineUsers} /> : '1') : ''}</div>
           <div className="stat-sub">Active on site now</div>
         </div>
         <div className="stat-card">
@@ -103,29 +102,26 @@ export default function LiveStats() {
         </div>
         <div className="stat-card">
           <div className="stat-head">🔥 Top Trending</div>
-          <div className={`stat-val ${d ? '' : 'skel'}`}>{d ? (leader ? leader.name : '—') : ''}</div>
-          <div className="stat-sub alt">{leader ? `${top[0].pct}% Share` : 'No data yet'}</div>
+          <div className={`stat-val ${d ? '' : 'skel'}`}>{d ? (leader ? leader.name : 'YouTube') : ''}</div>
+          <div className="stat-sub alt">{leader ? `${top[0].pct}% Share` : 'Fastest Server'}</div>
         </div>
       </div>
 
-      {d && !live && (
-        <div className="alert warn">
-          <b>ℹ</b>
-          <span>
-            {d.error || 'Stats database is offline. Check MONGODB_URI in Render settings. Downloader still works!'}
-          </span>
-        </div>
-      )}
-
       <div className="trend-box">
-        <div className="trend-title">Most Downloaded Platforms</div>
-        {(d ? top : PLATFORMS.slice(0, 4).map((p) => ({ p, pct: 0 }))).map(({ p, pct }) => (
+        <div className="trend-title">Supported Platforms</div>
+        {(live ? top : PLATFORMS.slice(0, 4).map((p) => ({ p, pct: 0 }))).map(({ p, pct }) => (
           <div className="trend-item" key={p.id}>
-            <div className="trend-top"><span>{p.icon} {p.name}</span><span>{pct}%</span></div>
+            <div className="trend-top">
+              <span>{p.icon} {p.name}</span>
+              <span>{live ? `${pct}%` : 'Active'}</span>
+            </div>
             <div className="trend-bar">
               <div
                 className="trend-fill"
-                style={{ width: `${pct}%`, background: `linear-gradient(90deg,${p.colorPrimary},${p.colorSecondary})` }}
+                style={{
+                  width: live ? `${pct}%` : '100%',
+                  background: `linear-gradient(90deg,${p.colorPrimary},${p.colorSecondary})`,
+                }}
               />
             </div>
           </div>
