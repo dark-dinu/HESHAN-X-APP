@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type Result = {
   token: string
   directHref?: string
+  thumb?: string
   title: string
   ext: string
   platform: string
 }
 
-const STEPS = ['Link එක පරීක්ෂා කරමින්...', 'Server එකෙන් media සොයමින්...', 'Secure link එක හදමින්...']
+const STEPS = ['Verifying link...', 'Fetching media from server...', 'Generating secure link...']
 
 export function useDownloader() {
   const [busy, setBusy] = useState(false)
@@ -60,21 +61,24 @@ export function useDownloader() {
       })
       const data = await res.json().catch(() => ({}))
 
-      // Render Server IP block වුණොත් Phone Browser එකෙන්ම Direct TikTok Fetch කිරීම
       if (data?.clientFallback === 'tiktok') {
-        setStat('Direct fast engine හරහා ගනිමින්...')
+        setStat('Fetching via direct fast engine...')
         const ttRes = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(data.url)}&hd=1`)
         const ttJson = await ttRes.json()
         const rawLink = data.isAudio ? ttJson?.data?.music : (ttJson?.data?.hdplay || ttJson?.data?.play)
-        if (!rawLink) throw new Error('TikTok video එක ලබාගැනීමට නොහැකි විය')
+        if (!rawLink) throw new Error('Unable to fetch TikTok video')
 
         const finalLink = rawLink.startsWith('http') ? rawLink : `https://www.tikwm.com${rawLink}`
+        const rawCover = ttJson?.data?.cover || ttJson?.data?.origin_cover || ''
+        const finalCover = rawCover ? (rawCover.startsWith('http') ? rawCover : `https://www.tikwm.com${rawCover}`) : ''
+
         stop()
         setPct(100)
-        setStat('සූදානම්! Save කරන්න ✔')
+        setStat('Ready! Click below to save ✔')
         setResult({
           token: '',
           directHref: finalLink,
+          thumb: finalCover,
           title: String(ttJson?.data?.title || 'HESHAN_OFC_TikTok').slice(0, 50),
           ext: data.isAudio ? 'mp3' : 'mp4',
           platform: 'tiktok',
@@ -82,17 +86,17 @@ export function useDownloader() {
         return
       }
 
-      if (!res.ok) throw new Error(data.error || 'බාගත කිරීමට නොහැකි විය')
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch media')
 
       stop()
       setPct(100)
-      setStat('සූදානම්! Save කරන්න ✔')
+      setStat('Ready! Click below to save ✔')
       setResult(data)
     } catch (e: any) {
       stop()
       setPct(0)
       setStat('')
-      setError(e.message || 'දෝෂයකි')
+      setError(e.message || 'An unexpected error occurred')
     } finally {
       setBusy(false)
     }
