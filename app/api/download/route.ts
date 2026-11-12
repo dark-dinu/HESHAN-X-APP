@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { sealLink } from '@/lib/vault'
 
-const API_BASE = process.env.CHAMINDU_API_BASE || 'https://api.chamindu.site/api/v1'
-const API_KEY = process.env.CHAMINDU_API_KEY || 'chama_api_9c55e3c6d014abbdf65054f9046a920b'
+const API_BASE = (process.env.CHAMINDU_API_BASE || 'https://api.chamindu.site/api/v1').trim()
+const API_KEY = (process.env.CHAMINDU_API_KEY || 'chama_api_9c55e3c6d014abbdf65054f9046a920b').trim()
 
-// vt.tiktok.com / pin.it / fb.watch වගේ short links full URL එකට expand කිරීම
 async function expandShortUrl(rawUrl: string): Promise<string> {
   if (!/^https?:\/\//i.test(rawUrl)) return rawUrl
   if (
@@ -24,7 +23,7 @@ async function expandShortUrl(rawUrl: string): Promise<string> {
         },
       })
       if (res.url && res.url.startsWith('http')) {
-        return res.url.split('?')[0] // Tracking parameters අයින් කර පිරිසිදු link එක ගැනීම
+        return res.url.split('?')[0]
       }
     } catch {}
   }
@@ -65,7 +64,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Link එකක් හෝ අංකයක් ඇතුළත් කරන්න' }, { status: 400 })
     }
 
-    // Short links auto-expand කිරීම
     if (platform !== 'whatsapp') {
       input = await expandShortUrl(input)
     }
@@ -129,6 +127,7 @@ export async function POST(req: Request) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json',
+        'x-api-key': API_KEY,
       },
     }
 
