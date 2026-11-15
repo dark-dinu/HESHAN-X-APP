@@ -32,6 +32,30 @@ async function getJson(url: string, init?: RequestInit) {
   }
 }
 
+// Spotify album/playlist/share links -> clean /track/ URL එකක් බවට හැරවීම
+async function normalizeSpotifyUrl(rawUrl: string): Promise<string> {
+  let clean = rawUrl.trim().split('?')[0]
+  try {
+    // spotify.link short URLs resolve කිරීම
+    if (/spotify\.link/i.test(clean)) {
+      const r = await fetch(clean, { redirect: 'follow', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) })
+      if (r.url) clean = r.url.split('?')[0]
+    }
+    // Album හෝ Playlist link එකක් නම්, ඒ page එකෙන් පළවෙනි track URL එක extract කිරීම
+    if (/open\.spotify\.com\/(album|playlist)\//i.test(clean)) {
+      const res = await fetch(clean, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) })
+      const html = await res.text()
+      const trackMatch =
+        html.match(/https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]+/i)?.[0] ||
+        html.match(/spotify:track:([a-zA-Z0-9]+)/i)?.[1]
+      if (trackMatch) {
+        clean = trackMatch.startsWith('http') ? trackMatch : `https://open.spotify.com/track/${trackMatch}`
+      }
+    }
+  } catch {}
+  return clean
+}
+
 async function normalizeFacebookUrl(rawUrl: string): Promise<string> {
   let clean = rawUrl.trim()
 
@@ -81,7 +105,7 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
       return
     }
     if (typeof val === 'object') {
-      for (const key of ['hd', 'hd_url', 'hdplay', 'video_hd', 'mp4', 'download_url', 'downloadUrl', 'dl_url', 'play', 'sd', 'sd_url', 'url', 'link', 'media', 'result', 'data']) {
+      for (const key of ['hd', 'hd_url', 'hdplay', 'video_hd', 'mp4', 'download_url', 'downloadUrl', 'dl_url', 'audio', 'music', 'play', 'sd', 'sd_url', 'url', 'link', 'media', 'result', 'data']) {
         if (val[key] !== undefined) scan(val[key])
       }
       for (const [k, v] of Object.entries(val)) {
@@ -102,6 +126,7 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
       !u.includes('instagram.com/p/') &&
       !u.includes('instagram.com/reel/') &&
       !u.includes('tiktok.com/@') &&
+      !u.includes('open.spotify.com/') &&
       !u.includes('pinterest.com/pin') &&
       !u.includes('x.com/') &&
       !u.includes('twitter.com/')
@@ -149,6 +174,8 @@ export async function POST(req: Request) {
 
     if (platform === 'facebook') {
       input = await normalizeFacebookUrl(input)
+    } else if (platform === 'spotify') {
+      input = await normalizeSpotifyUrl(input)
     }
 
     const enc = encodeURIComponent(input)
@@ -199,7 +226,10 @@ export async function POST(req: Request) {
         break
       case 'spotify':
         defExt = 'mp3'
-        endpoints.push(`${API_BASE}/spotify/download?q=${enc}&quality=320kbps${k}`)
+        endpoints.push(
+          `${API_BASE}/spotify/download?q=${enc}&quality=320kbps${k}`,
+          `${API_BASE}/spotify/download?url=${enc}&quality=320kbps${k}`
+        )
         break
       case 'pinterest':
         endpoints.push(`${API_BASE}/media/pinterest/infodl?q=${enc}${k}`)
@@ -242,7 +272,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Facebook Backup API (Chamindu API fail වුණොත් auto run වේ)
+    // Facebook Backup API
     if (!mediaUrl && platform === 'facebook') {
       const fbBackup = await getJson('https://fdown.isuru.eu.org/download', {
         method: 'POST',
