@@ -21,7 +21,7 @@ async function getJson(url: string, init?: RequestInit) {
         Accept: 'application/json',
         ...(init?.headers || {}),
       },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(15000),
     })
     const text = await r.text()
     let json: any = null
@@ -258,7 +258,9 @@ export async function POST(req: Request) {
         defExt = 'jpg'
         endpoints.push(
           `${API_BASE}/media/whatsapp_dp/infodl?q=${num}${k}`,
-          `${API_BASE}/media/whatsapp_dp?q=${num}${k}`
+          `https://api.giftedtech.web.id/api/tools/wadp?apikey=gifted&number=${num}`,
+          `https://api.siputzx.my.id/api/stalk/whatsapp?number=${num}`,
+          `https://bk9.fun/tools/wadp?q=${num}`
         )
         break
       }
@@ -325,7 +327,7 @@ export async function POST(req: Request) {
     if (!mediaUrl) {
       return NextResponse.json({
         error: platform === 'whatsapp'
-          ? 'Profile picture not found or privacy is set to private.'
+          ? 'WhatsApp DP server temporarily unavailable or number has no public DP.'
           : `Unable to fetch media (${lastDebug})`,
       }, { status: 404 })
     }
