@@ -31,12 +31,11 @@ async function getJson(url: string) {
   }
 }
 
-async function normalizeFacebookUrl(rawUrl: string): Promise<{ resolved: string; note: string }> {
+// Facebook share/r/, fb.watch වගේ short links 100% real reel/video URL එකට convert කිරීම
+async function normalizeFacebookUrl(rawUrl: string): Promise<string> {
   let clean = rawUrl.trim()
-  let note = 'direct'
 
   if (/facebook\.com\/share\/|fb\.watch/i.test(clean)) {
-    // Method 1: Chrome User-Agent redirect follow
     try {
       const res = await fetch(clean, {
         method: 'GET',
@@ -50,7 +49,6 @@ async function normalizeFacebookUrl(rawUrl: string): Promise<{ resolved: string;
       })
       if (res.url && !res.url.includes('/login') && !res.url.includes('/share/')) {
         clean = res.url
-        note = 'redirect-ok'
       } else {
         const html = await res.text()
         const match =
@@ -60,18 +58,14 @@ async function normalizeFacebookUrl(rawUrl: string): Promise<{ resolved: string;
           html.match(/https?:\\\/\\\/(?:www|web|m)\.facebook\.com\\\/(?:reel|watch|videos)\\\/[0-9]+/i)?.[0]
         if (match) {
           clean = match.replace(/\\\//g, '/').replace(/&amp;/g, '&')
-          note = 'html-match'
-        } else {
-          note = `unresolved(${res.url.slice(0, 40)})`
         }
       }
-    } catch (e: any) {
-      note = `err(${e?.message || 'fail'})`
-    }
+    } catch {}
   }
 
+  // www.facebook.com / m.facebook.com -> web.facebook.com බවට හැරවීම
   clean = clean.split('?')[0].replace(/^https?:\/\/(www\.|m\.|mbasic\.)?facebook\.com/i, 'https://web.facebook.com')
-  return { resolved: clean, note }
+  return clean
 }
 
 function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): string {
@@ -154,11 +148,8 @@ export async function POST(req: Request) {
     if (!input) return NextResponse.json({ error: 'Please enter a valid link or number' }, { status: 400 })
     if (!PLATFORM_IDS.includes(platform)) return NextResponse.json({ error: 'Unsupported platform' }, { status: 400 })
 
-    let fbNote = ''
     if (platform === 'facebook') {
-      const fb = await normalizeFacebookUrl(input)
-      input = fb.resolved
-      fbNote = ` [${fb.note} -> ${input}]`
+      input = await normalizeFacebookUrl(input)
     }
 
     const enc = encodeURIComponent(input)
@@ -196,8 +187,17 @@ export async function POST(req: Request) {
         endpoints.push(`${API_BASE}/media/instagram?url=${enc}${k}`)
         break
       case 'facebook':
-        endpoints.push(`${API_BASE}/facebook/c2?url=${enc}${k}`)
-        if (rawEnc !== enc) endpoints.push(`${API_BASE}/facebook/c2?url=${rawEnc}${k}`)
+        // ඔයා දුන්න හරිම Chamindu Facebook API endpoint එක (/api/v1/facebook)
+        endpoints.push(
+          `${API_BASE}/facebook?url=${enc}${k}`,
+          `${API_BASE}/facebook/c2?url=${enc}${k}`
+        )
+        if (rawEnc !== enc) {
+          endpoints.push(
+            `${API_BASE}/facebook?url=${rawEnc}${k}`,
+            `${API_BASE}/facebook/c2?url=${rawEnc}${k}`
+          )
+        }
         break
       case 'spotify':
         defExt = 'mp3'
@@ -220,13 +220,11 @@ export async function POST(req: Request) {
     }
 
     let lastJson: any = null
-    let lastDebug = ''
     let mediaUrl = ''
     let mediaExt = defExt
 
     for (const target of endpoints) {
       const r = await getJson(target)
-      lastDebug = `HTTP ${r.status}: ${(r.text || '').slice(0, 120)}`
       if (!r.json) continue
       lastJson = r.json
 
@@ -244,6 +242,7 @@ export async function POST(req: Request) {
       }
     }
 
+    // TikTok Fallback (tikwm)
     if (!mediaUrl && platform === 'tiktok') {
       try {
         const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
@@ -262,7 +261,9 @@ export async function POST(req: Request) {
 
     if (!mediaUrl) {
       return NextResponse.json({
-        error: `Unable to fetch media (${lastDebug})${fbNote}`,
+        error: platform === 'whatsapp'
+          ? 'Profile picture not found or privacy is set to private.'
+          : 'Unable to fetch media. Please check if the link is public.',
       }, { status: 404 })
     }
 
@@ -270,7 +271,7 @@ export async function POST(req: Request) {
     const thumb = pickThumb(lastJson) || (image ? mediaUrl : '')
     const token = sealLink(mediaUrl, `${title}.${mediaExt}`)
     return NextResponse.json({ token, title, ext: mediaExt, platform, thumb })
-  } catch (e: any) {
-    return NextResponse.json({ error: `Server error: ${e?.message || 'unknown'}` }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
