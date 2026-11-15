@@ -32,16 +32,13 @@ async function getJson(url: string, init?: RequestInit) {
   }
 }
 
-// Spotify album/playlist/share links -> clean /track/ URL එකක් බවට හැරවීම
 async function normalizeSpotifyUrl(rawUrl: string): Promise<string> {
   let clean = rawUrl.trim().split('?')[0]
   try {
-    // spotify.link short URLs resolve කිරීම
     if (/spotify\.link/i.test(clean)) {
       const r = await fetch(clean, { redirect: 'follow', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) })
       if (r.url) clean = r.url.split('?')[0]
     }
-    // Album හෝ Playlist link එකක් නම්, ඒ page එකෙන් පළවෙනි track URL එක extract කිරීම
     if (/open\.spotify\.com\/(album|playlist)\//i.test(clean)) {
       const res = await fetch(clean, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) })
       const html = await res.text()
@@ -105,13 +102,18 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
       return
     }
     if (typeof val === 'object') {
-      for (const key of ['hd', 'hd_url', 'hdplay', 'video_hd', 'mp4', 'download_url', 'downloadUrl', 'dl_url', 'audio', 'music', 'play', 'sd', 'sd_url', 'url', 'link', 'media', 'result', 'data']) {
+      for (const key of [
+        'profilePic', 'profile_pic', 'ppUrl', 'pp_url', 'dp', 'dp_url', 'picture', 'avatar', 'image', 'img',
+        'hd', 'hd_url', 'hdplay', 'video_hd', 'mp4', 'download_url', 'downloadUrl', 'dl_url',
+        'audio', 'music', 'play', 'sd', 'sd_url', 'url', 'link', 'media', 'result', 'data'
+      ]) {
         if (val[key] !== undefined) scan(val[key])
       }
       for (const [k, v] of Object.entries(val)) {
-        if (!['thumbnail', 'thumb', 'cover', 'origin_cover', 'avatar', 'icon', 'pic', 'artwork', 'author'].includes(k.toLowerCase())) {
-          scan(v)
+        if (!preferImage && ['thumbnail', 'thumb', 'cover', 'origin_cover', 'avatar', 'icon', 'pic', 'artwork', 'author'].includes(k.toLowerCase())) {
+          continue
         }
+        scan(v)
       }
     }
   }
@@ -133,7 +135,17 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
   )
 
   if (preferImage) {
-    return filtered.find((u) => /\.(jpg|jpeg|png|webp)/i.test(u) || u.includes('pps.whatsapp.net') || u.includes('pinimg.com')) || filtered[0] || ''
+    return (
+      filtered.find(
+        (u) =>
+          u.includes('pps.whatsapp.net') ||
+          u.includes('mmg.whatsapp.net') ||
+          u.includes('pinimg.com') ||
+          /\.(jpg|jpeg|png|webp)/i.test(u)
+      ) ||
+      filtered[0] ||
+      ''
+    )
   }
   if (preferAudio) {
     return filtered.find((u) => /\.(mp3|m4a|aac|ogg|opus)/i.test(u) || u.includes('mime=audio')) || filtered[0] || ''
@@ -147,7 +159,7 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
 
 function pickThumb(obj: any): string {
   if (!obj || typeof obj !== 'object') return ''
-  for (const k of ['cover', 'origin_cover', 'thumbnail', 'thumb', 'image', 'pic', 'artwork', 'hd_image']) {
+  for (const k of ['profilePic', 'profile_pic', 'ppUrl', 'dp', 'cover', 'origin_cover', 'thumbnail', 'thumb', 'image', 'pic', 'artwork', 'hd_image']) {
     if (typeof obj[k] === 'string' && obj[k].startsWith('http')) return obj[k]
   }
   for (const v of Object.values(obj)) {
@@ -185,6 +197,7 @@ export async function POST(req: Request) {
     const isAudio = platform === 'spotify' || audio
     let image = false
     let defExt = isAudio ? 'mp3' : 'mp4'
+    let waNumber = ''
 
     const endpoints: string[] = []
 
@@ -240,9 +253,13 @@ export async function POST(req: Request) {
       case 'whatsapp': {
         let num = input.replace(/\D/g, '')
         if (num.startsWith('0') && num.length === 10) num = '94' + num.slice(1)
+        waNumber = num
         image = true
         defExt = 'jpg'
-        endpoints.push(`${API_BASE}/media/whatsapp_dp/infodl?q=${num}${k}`)
+        endpoints.push(
+          `${API_BASE}/media/whatsapp_dp/infodl?q=${num}${k}`,
+          `${API_BASE}/media/whatsapp_dp?q=${num}${k}`
+        )
         break
       }
     }
@@ -311,6 +328,20 @@ export async function POST(req: Request) {
           ? 'Profile picture not found or privacy is set to private.'
           : `Unable to fetch media (${lastDebug})`,
       }, { status: 404 })
+    }
+
+    // WhatsApp DP සඳහා එතනම Preview Image එක පෙන්නලා Download වීමට
+    if (platform === 'whatsapp') {
+      const wpTitle = cleanTitle(pickTitle(lastJson), `WA_DP_${waNumber || 'HESHAN_OFC'}`)
+      const token = sealLink(mediaUrl, `${wpTitle}.jpg`)
+      return NextResponse.json({
+        token,
+        directHref: mediaUrl,
+        title: wpTitle,
+        ext: 'jpg',
+        platform: 'whatsapp',
+        thumb: mediaUrl,
+      })
     }
 
     const title = cleanTitle(pickTitle(lastJson), `HESHAN_OFC_${platform}`)
