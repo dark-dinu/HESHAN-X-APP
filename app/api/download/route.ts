@@ -7,18 +7,19 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-const API_BASE = (process.env.CHAMINDU_API_BASE || 'https://api.chamindu.site/api/v1').trim().replace(/\/$/, '')
-const API_KEY = (process.env.CHAMINDU_API_KEY || 'chama_api_9c55e3c6d014abbdf65054f9046a920b').trim()
+const API_BASE = 'https://api.chamindu.site/api/v1'
+const API_KEY = 'chama_api_9c55e3c6d014abbdf65054f9046a920b'
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
 
-async function getJson(url: string) {
+async function getJson(url: string, init?: RequestInit) {
   try {
     const r = await fetch(url, {
       cache: 'no-store',
+      ...init,
       headers: {
         'User-Agent': UA,
         Accept: 'application/json',
-        'x-api-key': API_KEY,
+        ...(init?.headers || {}),
       },
       signal: AbortSignal.timeout(20000),
     })
@@ -31,7 +32,6 @@ async function getJson(url: string) {
   }
 }
 
-// Facebook share/r/, fb.watch වගේ short links 100% real reel/video URL එකට convert කිරීම
 async function normalizeFacebookUrl(rawUrl: string): Promise<string> {
   let clean = rawUrl.trim()
 
@@ -63,7 +63,6 @@ async function normalizeFacebookUrl(rawUrl: string): Promise<string> {
     } catch {}
   }
 
-  // www.facebook.com / m.facebook.com -> web.facebook.com බවට හැරවීම
   clean = clean.split('?')[0].replace(/^https?:\/\/(www\.|m\.|mbasic\.)?facebook\.com/i, 'https://web.facebook.com')
   return clean
 }
@@ -187,7 +186,6 @@ export async function POST(req: Request) {
         endpoints.push(`${API_BASE}/media/instagram?url=${enc}${k}`)
         break
       case 'facebook':
-        // ඔයා දුන්න හරිම Chamindu Facebook API endpoint එක (/api/v1/facebook)
         endpoints.push(
           `${API_BASE}/facebook?url=${enc}${k}`,
           `${API_BASE}/facebook/c2?url=${enc}${k}`
@@ -220,11 +218,13 @@ export async function POST(req: Request) {
     }
 
     let lastJson: any = null
+    let lastDebug = ''
     let mediaUrl = ''
     let mediaExt = defExt
 
     for (const target of endpoints) {
       const r = await getJson(target)
+      lastDebug = `HTTP ${r.status}: ${(r.text || '').slice(0, 140)}`
       if (!r.json) continue
       lastJson = r.json
 
@@ -242,7 +242,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // TikTok Fallback (tikwm)
+    // Facebook Backup API (Chamindu API fail වුණොත් auto run වේ)
+    if (!mediaUrl && platform === 'facebook') {
+      const fbBackup = await getJson('https://fdown.isuru.eu.org/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: input, quality: 'best' }),
+      })
+      if (fbBackup.json) {
+        const bUrl = deepFindMediaUrl(fbBackup.json, false, false)
+        if (bUrl) {
+          mediaUrl = bUrl
+          lastJson = fbBackup.json
+        }
+      }
+    }
+
+    // TikTok Backup API
     if (!mediaUrl && platform === 'tiktok') {
       try {
         const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
@@ -263,7 +279,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         error: platform === 'whatsapp'
           ? 'Profile picture not found or privacy is set to private.'
-          : 'Unable to fetch media. Please check if the link is public.',
+          : `Unable to fetch media (${lastDebug})`,
       }, { status: 404 })
     }
 
@@ -271,7 +287,7 @@ export async function POST(req: Request) {
     const thumb = pickThumb(lastJson) || (image ? mediaUrl : '')
     const token = sealLink(mediaUrl, `${title}.${mediaExt}`)
     return NextResponse.json({ token, title, ext: mediaExt, platform, thumb })
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: `Server error: ${e?.message || 'unknown'}` }, { status: 500 })
   }
 }
