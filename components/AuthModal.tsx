@@ -8,6 +8,8 @@ export type AuthUser = {
   avatar?: string
 }
 
+const SUPABASE_URL = 'https://nnrykrraphocccgevvtk.supabase.co'
+
 export default function AuthModal({
   open,
   onClose,
@@ -25,6 +27,11 @@ export default function AuthModal({
   const [error, setError] = useState('')
 
   if (!open) return null
+
+  const startGoogleLogin = () => {
+    const redirectTo = encodeURIComponent(`${window.location.origin}/auth/callback`)
+    window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,21 +60,20 @@ export default function AuthModal({
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: '#fff' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff' }}>
             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h3>
           <button onClick={onClose} style={closeBtnStyle} aria-label="Close">✕</button>
         </div>
 
-        <p style={{ margin: '0 0 18px', fontSize: 13, color: '#94a3b8' }}>
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#94a3b8' }}>
           {mode === 'login'
             ? 'ඔබගේ ගිණුමට පිවිස ඔබගේ පෞද්ගලික ඉතිහාසය ආරක්ෂිතව තබාගන්න.'
             : 'Gmail සහ Password ලබා දී නව ගිණුමක් සාදන්න.'}
         </p>
 
-        {/* Google Login Button */}
-        <a href="/api/auth/google" style={googleBtnStyle}>
+        <button type="button" onClick={startGoogleLogin} style={googleBtnStyle}>
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -75,13 +81,13 @@ export default function AuthModal({
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
           </svg>
           <span>Continue with Google</span>
-        </a>
+        </button>
 
         <div style={dividerStyle}>
-          <span style={{ background: '#0f172a', padding: '0 10px', color: '#64748b', fontSize: 12 }}>OR</span>
+          <span style={{ background: '#0f172a', padding: '0 10px', color: '#64748b', fontSize: 11.5 }}>OR</span>
         </div>
 
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
           {mode === 'register' && (
             <input
               type="text"
@@ -111,7 +117,7 @@ export default function AuthModal({
           />
 
           {error && (
-            <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', padding: '9px 12px', borderRadius: 10, fontSize: 12.5 }}>
+            <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', padding: '8px 11px', borderRadius: 10, fontSize: 12 }}>
               {error}
             </div>
           )}
@@ -121,7 +127,7 @@ export default function AuthModal({
           </button>
         </form>
 
-        <div style={{ marginTop: 16, textAlign: 'center', fontSize: 13, color: '#94a3b8' }}>
+        <div style={{ marginTop: 14, textAlign: 'center', fontSize: 12.5, color: '#94a3b8' }}>
           {mode === 'login' ? (
             <>
               ගිණුමක් නැද්ද?{' '}
@@ -157,23 +163,23 @@ const overlayStyle: React.CSSProperties = {
 
 const cardStyle: React.CSSProperties = {
   width: '100%',
-  maxWidth: 400,
+  maxWidth: 390,
   background: '#0f172a',
   border: '1px solid rgba(56, 189, 248, 0.25)',
   borderRadius: 20,
-  padding: 24,
-  boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+  padding: 22,
+  boxShadow: '0 20px 50px rgba(0,0,0,0.65)',
 }
 
 const closeBtnStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.08)',
   border: 'none',
   color: '#cbd5e1',
-  width: 30,
-  height: 30,
+  width: 28,
+  height: 28,
   borderRadius: 999,
   cursor: 'pointer',
-  fontSize: 14,
+  fontSize: 13,
 }
 
 const googleBtnStyle: React.CSSProperties = {
@@ -184,43 +190,43 @@ const googleBtnStyle: React.CSSProperties = {
   width: '100%',
   padding: '11px 16px',
   borderRadius: 12,
+  border: 'none',
   background: '#ffffff',
   color: '#0f172a',
   fontWeight: 600,
-  fontSize: 14,
-  textDecoration: 'none',
-  boxSizing: 'border-box',
+  fontSize: 13.5,
+  cursor: 'pointer',
 }
 
 const dividerStyle: React.CSSProperties = {
   position: 'relative',
   textAlign: 'center',
-  margin: '18px 0',
+  margin: '16px 0',
   borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
   lineHeight: '0.1em',
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '11px 14px',
-  borderRadius: 12,
+  padding: '10px 13px',
+  borderRadius: 11,
   background: 'rgba(15, 23, 42, 0.9)',
   border: '1px solid rgba(148, 163, 184, 0.25)',
   color: '#fff',
-  fontSize: 14,
+  fontSize: 13.5,
   outline: 'none',
   boxSizing: 'border-box',
 }
 
 const submitBtnStyle: React.CSSProperties = {
   marginTop: 4,
-  padding: '12px',
-  borderRadius: 12,
+  padding: '11px',
+  borderRadius: 11,
   border: 'none',
   background: 'linear-gradient(135deg, #2563eb, #38bdf8)',
   color: '#fff',
   fontWeight: 600,
-  fontSize: 14.5,
+  fontSize: 14,
   cursor: 'pointer',
 }
 
@@ -231,5 +237,5 @@ const switchLinkStyle: React.CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   padding: 0,
-  fontSize: 13,
+  fontSize: 12.5,
 }
