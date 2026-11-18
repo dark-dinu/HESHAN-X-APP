@@ -1,10 +1,18 @@
 import crypto from 'crypto'
-import mongoose from 'mongoose'
+import mongoose, { Model } from 'mongoose'
 
 const SECRET = process.env.AUTH_SECRET || 'heshan-ofc-super-secret-auth-key-2026'
 
-// User Schema (MongoDB 'users' collection)
-const UserSchema = new mongoose.Schema({
+export interface IUser {
+  name: string
+  email: string
+  passwordHash?: string
+  avatar?: string
+  provider: 'credentials' | 'google'
+  createdAt: Date
+}
+
+const UserSchema = new mongoose.Schema<IUser>({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, default: '' },
@@ -13,9 +21,9 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
-export const User = mongoose.models.User || mongoose.model('User', UserSchema)
+export const User: Model<IUser> =
+  (mongoose.models.User as Model<IUser>) || mongoose.model<IUser>('User', UserSchema)
 
-// Password Hash & Verify (Node built-in crypto)
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex')
   const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex')
@@ -29,7 +37,6 @@ export function verifyPassword(password: string, stored: string): boolean {
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(originalHash, 'hex'))
 }
 
-// Signed Session Token
 export type SessionUser = {
   id: string
   name: string
@@ -38,7 +45,9 @@ export type SessionUser = {
 }
 
 export function createSessionToken(user: SessionUser): string {
-  const payload = Buffer.from(JSON.stringify({ ...user, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 })).toString('base64url')
+  const payload = Buffer.from(
+    JSON.stringify({ ...user, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 })
+  ).toString('base64url')
   const sig = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url')
   return `${payload}.${sig}`
 }
