@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import mongoose from 'mongoose'
+import { verifySessionToken } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -91,6 +93,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid platform' }, { status: 400 })
     }
 
+    // Login වෙලා ඉන්න user ගේ නම cookie එකෙන් ලබාගැනීම
+    const cookieStore = await cookies()
+    const token = cookieStore.get('heshan_session')?.value
+    const sessionUser = verifySessionToken(token)
+    const userName = sessionUser?.name ? String(sessionUser.name).trim().slice(0, 24) : ''
+
+    const entry: { p: string; t: string; u?: string } = {
+      p: platform,
+      t: new Date().toISOString(),
+    }
+    if (userName) {
+      entry.u = userName
+    }
+
     const db = await getDb()
     await db.collection('stats').updateOne(
       { key: 'global' },
@@ -98,7 +114,7 @@ export async function POST(req: Request) {
         $inc: { [`downloads.${platform}`]: 1, total: 1 },
         $push: {
           recent: {
-            $each: [{ p: platform, t: new Date().toISOString() }],
+            $each: [entry],
             $position: 0,
             $slice: 10,
           },
