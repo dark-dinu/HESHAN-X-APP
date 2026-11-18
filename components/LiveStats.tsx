@@ -7,7 +7,7 @@ type Stats = {
   onlineUsers: number
   totalDownloads: number
   percentages: Record<string, number>
-  recent: { p: string; t: string }[]
+  recent: { p: string; t: string; u?: string }[]
 }
 
 function Count({ value }: { value: number }) {
@@ -136,7 +136,25 @@ export default function LiveStats() {
               const p = PLATFORMS.find((x) => x.id === r.p)
               return (
                 <li key={i} style={{ ['--i' as any]: i }}>
-                  <span>{p?.icon} {p?.name || r.p}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {p?.icon} {p?.name || r.p}
+                    {r.u && (
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: '#38bdf8',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          border: '1px solid rgba(56, 189, 248, 0.28)',
+                          padding: '1px 7px',
+                          borderRadius: 999,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {r.u}
+                      </span>
+                    )}
+                  </span>
                   <em>{ago(r.t)}</em>
                 </li>
               )
