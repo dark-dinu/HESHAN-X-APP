@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 
 const CHANNEL_URL = 'https://whatsapp.com/channel/0029VbDwT0W8kyyLjvt3s23t'
 // ඔයාගේ Channel Logo / Banner image link එකක් තියෙනවා නම් පහළ quotes ඇතුළට දාන්න (නැත්නම් default banner එක පේනවා)
-const PROMO_IMAGE = ''
+const PROMO_IMAGE = 'https://files.catbox.moe/qap730.jpg'
 
 const STORAGE_KEY = 'heshan_wa_promo_v2'
 const MAX_PER_DAY = 3
