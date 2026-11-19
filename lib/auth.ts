@@ -55,7 +55,9 @@ export type SessionUser = {
   isOwner: boolean
 }
 
-export function createSessionToken(user: Omit<SessionUser, 'isOwner'> & { isOwner?: boolean }): string {
+export function createSessionToken(
+  user: Omit<SessionUser, 'isOwner' | 'plan'> & { plan?: UserPlan; isOwner?: boolean }
+): string {
   const owner = isOwnerEmail(user.email)
   const payloadData: SessionUser = {
     id: user.id,
