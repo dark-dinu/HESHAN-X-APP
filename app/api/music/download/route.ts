@@ -67,20 +67,6 @@ function extractAudioUrl(obj: any, depth = 0): string {
   return ''
 }
 
-async function tryDownload(endpoint: string) {
-  const res = await fetch(endpoint, { cache: 'no-store' })
-  const text = await res.text()
-  let data: any = {}
-  try {
-    data = JSON.parse(text)
-  } catch {
-    data = { rawText: text.slice(0, 180) }
-  }
-  const payload = data?.result || data?.data || data
-  const downloadUrl = extractAudioUrl(payload)
-  return { ok: res.ok && Boolean(downloadUrl), payload, downloadUrl, raw: data }
-}
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const rawUrl = String(searchParams.get('url') || '').trim()
@@ -91,46 +77,53 @@ export async function GET(req: Request) {
   }
 
   const trackUrl = normalizeSpotifyUrl(rawUrl)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 18000)
 
   try {
-    // 1. Try with requested quality (320kbps)
-    let result = await tryDownload(
-      `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`
-    )
-
-    // 2. Try without quality parameter
-    if (!result.ok) {
-      result = await tryDownload(
-        `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&api_key=${API_KEY}`
-      )
-    }
-
-    // 3. Try using `url=` param instead of `q=`
-    if (!result.ok) {
-      result = await tryDownload(
-        `https://api.chamindu.site/api/v1/spotify/download?url=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`
-      )
-    }
-
-    if (!result.ok || !result.downloadUrl) {
-      const debugPreview = JSON.stringify(result.raw).slice(0, 180)
-      return NextResponse.json(
-        {
-          error: `Stream unavailable (${trackUrl}) — API: ${debugPreview}`,
+    const res = await fetch(
+      `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`,
+      {
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36',
+          Accept: 'application/json',
         },
+      }
+    )
+    clearTimeout(timer)
+
+    const text = await res.text()
+    let data: any = {}
+    try {
+      data = JSON.parse(text)
+    } catch {
+      return NextResponse.json({ error: `API returned non-JSON: ${text.slice(0, 120)}` }, { status: 502 })
+    }
+
+    const payload = data?.result || data?.data || data
+    const downloadUrl = extractAudioUrl(payload)
+
+    if (!res.ok || !downloadUrl) {
+      return NextResponse.json(
+        { error: `API error: ${JSON.stringify(data).slice(0, 160)}` },
         { status: 404 }
       )
     }
 
-    const p = result.payload || {}
     return NextResponse.json({
-      title: String(p?.title || p?.name || 'Spotify Track'),
-      artist: String(p?.artist || p?.artists || ''),
-      thumbnail: String(p?.thumbnail || p?.image || p?.cover || ''),
-      duration: String(p?.duration || ''),
-      downloadUrl: result.downloadUrl,
+      title: String(payload?.title || payload?.name || 'Spotify Track'),
+      artist: String(payload?.artist || payload?.artists || ''),
+      thumbnail: String(payload?.thumbnail || payload?.image || payload?.cover || ''),
+      duration: String(payload?.duration || ''),
+      downloadUrl,
     })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Failed to load MP3 stream.' }, { status: 500 })
+    clearTimeout(timer)
+    return NextResponse.json(
+      { error: e?.name === 'AbortError' ? 'API took too long to respond (timeout).' : `Server error: ${e?.message}` },
+      { status: 504 }
+    )
   }
 }
