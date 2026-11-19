@@ -21,8 +21,8 @@ type ActiveStream = {
 const SUGGESTIONS = [
   'Kamali Dewiyo',
   'Shape of You',
-  'Blinding Lights',
-  'Stay - Justin Bieber',
+  'Lelena',
+  'Maa Dihaa - DILU Beats',
 ]
 
 export default function MusicHubPage() {
@@ -44,11 +44,16 @@ export default function MusicHubPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`
   }
 
-  const playSpotifyUrl = async (track: TrackItem) => {
+  const playTrack = async (track: TrackItem) => {
     setError('')
     setLoadingTrackId(track.id)
     try {
-      const res = await fetch(`/api/music/download?url=${encodeURIComponent(track.url)}&quality=320kbps`)
+      const params = new URLSearchParams({
+        url: track.url,
+        title: track.title,
+        quality: '320kbps',
+      })
+      const res = await fetch(`/api/music/download?${params.toString()}`)
       const data = await res.json()
       if (!res.ok || !data.downloadUrl) {
         setError(data.error || 'Could not load audio stream.')
@@ -81,7 +86,7 @@ export default function MusicHubPage() {
   const handleSearch = async (customQuery?: string) => {
     const q = (customQuery ?? query).trim()
     if (!q) {
-      setError('Please enter a song name or Spotify track link.')
+      setError('Please enter a song name, Spotify link, or YouTube link.')
       return
     }
     setQuery(q)
@@ -89,11 +94,16 @@ export default function MusicHubPage() {
     setSearching(true)
 
     try {
-      // If user pasted a direct Spotify track link, load & play immediately
-      if (q.includes('open.spotify.com/track/')) {
-        await playSpotifyUrl({
+      const isDirectLink =
+        q.includes('open.spotify.com/track/') ||
+        q.includes('youtube.com/watch') ||
+        q.includes('youtu.be/') ||
+        q.includes('youtube.com/shorts/')
+
+      if (isDirectLink) {
+        await playTrack({
           id: 'direct',
-          title: 'Spotify Track',
+          title: q.includes('spotify') ? 'Spotify Track' : 'YouTube Audio',
           artist: '320kbps MP3',
           url: q,
         })
@@ -138,7 +148,6 @@ export default function MusicHubPage() {
       }}
     >
       <div style={{ maxWidth: 540, margin: '0 auto' }}>
-        {/* Top Badge */}
         <div
           style={{
             display: 'inline-flex',
@@ -161,10 +170,9 @@ export default function MusicHubPage() {
           Music Hub <span style={{ color: '#fff' }}>🎧</span>
         </h1>
         <p style={{ margin: '0 0 22px', fontSize: 14, color: '#94a3b8', lineHeight: 1.55 }}>
-          Search any song by name or paste a Spotify link. Listen directly online before downloading in 320kbps MP3.
+          Search any song by name or paste a Spotify / YouTube link. Listen directly online before downloading in 320kbps MP3.
         </p>
 
-        {/* Search Card */}
         <div
           style={{
             background: 'rgba(15, 23, 42, 0.78)',
@@ -196,7 +204,7 @@ export default function MusicHubPage() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search song name or paste Spotify link..."
+                placeholder="Song name / Spotify / YouTube link..."
                 style={{
                   flex: 1,
                   background: 'transparent',
@@ -252,7 +260,6 @@ export default function MusicHubPage() {
             </button>
           </form>
 
-          {/* Quick Suggestions */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
             {SUGGESTIONS.map((s) => (
               <button
@@ -275,7 +282,6 @@ export default function MusicHubPage() {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div
             style={{
@@ -292,7 +298,6 @@ export default function MusicHubPage() {
           </div>
         )}
 
-        {/* Active Online Audio Player Card */}
         {activeStream && (
           <div
             style={{
@@ -366,7 +371,6 @@ export default function MusicHubPage() {
               </button>
             </div>
 
-            {/* Seek Bar */}
             <div style={{ marginTop: 12 }}>
               <input
                 type="range"
@@ -386,7 +390,6 @@ export default function MusicHubPage() {
               </div>
             </div>
 
-            {/* Direct Download Button */}
             <a
               href={activeStream.downloadUrl}
               target="_blank"
@@ -423,7 +426,6 @@ export default function MusicHubPage() {
           </div>
         )}
 
-        {/* Search Results List */}
         {tracks.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', marginBottom: 10 }}>
@@ -436,7 +438,7 @@ export default function MusicHubPage() {
                 return (
                   <div
                     key={track.id}
-                    onClick={() => !isLoadingThis && playSpotifyUrl(track)}
+                    onClick={() => !isLoadingThis && playTrack(track)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
