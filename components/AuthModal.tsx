@@ -14,6 +14,15 @@ export type AuthUser = {
 
 type Mode = 'login' | 'register'
 
+function formatCleanError(raw?: string, fallback = 'Something went wrong. Please try again.'): string {
+  const msg = String(raw || '').trim()
+  if (!msg) return fallback
+  if (/mongo|mongoose|scheme|connection string|econnrefused|etimedout|enotfound|buffering timed out/i.test(msg)) {
+    return 'Service temporarily unavailable. Please try again in a moment.'
+  }
+  return msg
+}
+
 /* ---------- Icons ---------- */
 const Icon = ({ children }: { children: React.ReactNode }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -109,7 +118,7 @@ export default function AuthModal({
       })
       const data = await r.json()
       if (!r.ok) {
-        setError(data.error || 'Google sign-in failed.')
+        setError(formatCleanError(data.error, 'Google sign-in failed. Please try again.'))
         setShake((n) => n + 1)
       } else {
         setSuccess(true)
@@ -121,7 +130,7 @@ export default function AuthModal({
       }
     } catch (err: any) {
       if (err?.code !== 'auth/popup-closed-by-user') {
-        setError(err?.message || 'Google sign-in cancelled or failed.')
+        setError(formatCleanError(err?.message, 'Google sign-in cancelled or failed.'))
         setShake((n) => n + 1)
       }
     } finally {
@@ -142,7 +151,7 @@ export default function AuthModal({
       })
       const data = await r.json()
       if (!r.ok) {
-        setError(data.error || 'Something went wrong. Please try again.')
+        setError(formatCleanError(data.error))
         setShake((n) => n + 1)
       } else {
         setSuccess(true)
