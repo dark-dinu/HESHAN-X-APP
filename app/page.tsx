@@ -4,6 +4,7 @@ import { PLATFORMS, detectPlatform, PlatformConfig } from '@/config/platforms'
 import CompactProgress from '@/components/CompactProgress'
 import ResultCard from '@/components/ResultCard'
 import LiveStats from '@/components/LiveStats'
+import ChannelPromo from '@/components/ChannelPromo'
 import { useDownloader } from '@/hooks/useDownloader'
 
 export default function HomePage() {
@@ -111,6 +112,7 @@ export default function HomePage() {
       </form>
 
       <LiveStats />
+      <ChannelPromo />
     </>
   )
 }
