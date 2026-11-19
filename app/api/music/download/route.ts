@@ -2,9 +2,20 @@ import { NextResponse } from 'next/server'
 
 const API_KEY = 'chama_api_9c55e3c6d014abbdf65054f9046a920b'
 
-// Recursively find any playable audio / download URL inside the API response
+function normalizeSpotifyUrl(input: string): string {
+  const s = input.trim()
+  if (s.startsWith('spotify:track:')) {
+    const id = s.split(':')[2]
+    return id ? `https://open.spotify.com/track/${id}` : s
+  }
+  if (/^[A-Za-z0-9]{22}$/.test(s)) {
+    return `https://open.spotify.com/track/${s}`
+  }
+  return s
+}
+
 function extractAudioUrl(obj: any, depth = 0): string {
-  if (!obj || depth > 5) return ''
+  if (!obj || depth > 6) return ''
   if (typeof obj === 'string') {
     const s = obj.trim()
     if (
@@ -56,12 +67,15 @@ function extractAudioUrl(obj: any, depth = 0): string {
   return ''
 }
 
-async function fetchFromChamindu(trackUrl: string, quality: string) {
-  const res = await fetch(
-    `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`,
-    { cache: 'no-store' }
-  )
-  const data = await res.json().catch(() => ({}))
+async function tryDownload(endpoint: string) {
+  const res = await fetch(endpoint, { cache: 'no-store' })
+  const text = await res.text()
+  let data: any = {}
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = { rawText: text.slice(0, 180) }
+  }
   const payload = data?.result || data?.data || data
   const downloadUrl = extractAudioUrl(payload)
   return { ok: res.ok && Boolean(downloadUrl), payload, downloadUrl, raw: data }
@@ -69,28 +83,40 @@ async function fetchFromChamindu(trackUrl: string, quality: string) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  const url = String(searchParams.get('url') || '').trim()
+  const rawUrl = String(searchParams.get('url') || '').trim()
   const quality = String(searchParams.get('quality') || '320kbps').trim()
 
-  if (!url) {
+  if (!rawUrl) {
     return NextResponse.json({ error: 'Track URL is required.' }, { status: 400 })
   }
 
-  try {
-    let result = await fetchFromChamindu(url, quality)
+  const trackUrl = normalizeSpotifyUrl(rawUrl)
 
-    // Fallback to 128kbps if 320kbps is unavailable for a track
-    if (!result.ok && quality !== '128kbps') {
-      result = await fetchFromChamindu(url, '128kbps')
+  try {
+    // 1. Try with requested quality (320kbps)
+    let result = await tryDownload(
+      `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`
+    )
+
+    // 2. Try without quality parameter
+    if (!result.ok) {
+      result = await tryDownload(
+        `https://api.chamindu.site/api/v1/spotify/download?q=${encodeURIComponent(trackUrl)}&api_key=${API_KEY}`
+      )
+    }
+
+    // 3. Try using `url=` param instead of `q=`
+    if (!result.ok) {
+      result = await tryDownload(
+        `https://api.chamindu.site/api/v1/spotify/download?url=${encodeURIComponent(trackUrl)}&quality=${encodeURIComponent(quality)}&api_key=${API_KEY}`
+      )
     }
 
     if (!result.ok || !result.downloadUrl) {
+      const debugPreview = JSON.stringify(result.raw).slice(0, 180)
       return NextResponse.json(
         {
-          error:
-            result.raw?.message ||
-            result.raw?.error ||
-            'Unable to fetch MP3 stream for this track.',
+          error: `Stream unavailable (${trackUrl}) — API: ${debugPreview}`,
         },
         { status: 404 }
       )
@@ -104,7 +130,7 @@ export async function GET(req: Request) {
       duration: String(p?.duration || ''),
       downloadUrl: result.downloadUrl,
     })
-  } catch {
-    return NextResponse.json({ error: 'Failed to load MP3 stream. Please try again.' }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Failed to load MP3 stream.' }, { status: 500 })
   }
 }
