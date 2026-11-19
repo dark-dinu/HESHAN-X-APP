@@ -3,11 +3,18 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import AuthModal, { AuthUser } from './AuthModal'
+import AdminModal from './AdminModal'
+
+type ExtendedUser = AuthUser & {
+  plan?: 'normal' | 'premium'
+  isOwner?: boolean
+}
 
 export default function Nav() {
   const path = usePathname()
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [user, setUser] = useState<ExtendedUser | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -38,6 +45,9 @@ export default function Nav() {
     setUser(null)
   }
 
+  const isOwner = user?.isOwner || user?.email?.toLowerCase() === 'damiyamalinda@gmail.com'
+  const isPremium = isOwner || user?.plan === 'premium'
+
   return (
     <>
       <nav
@@ -50,7 +60,6 @@ export default function Nav() {
           flexWrap: 'nowrap',
         }}
       >
-        {/* Logo - තනි පේළියට */}
         <Link
           href="/"
           className="logo"
@@ -65,7 +74,6 @@ export default function Nav() {
           HESHAN <b>OFC</b>
         </Link>
 
-        {/* Center Compact Pill Menu */}
         <div
           style={{
             display: 'flex',
@@ -112,7 +120,6 @@ export default function Nav() {
           </Link>
         </div>
 
-        {/* Right Side: Sign In or User Profile Dropdown */}
         {user ? (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
@@ -121,8 +128,12 @@ export default function Nav() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
-                background: 'rgba(255, 255, 255, 0.07)',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
+                background: isOwner
+                  ? 'rgba(250, 204, 21, 0.14)'
+                  : 'rgba(255, 255, 255, 0.07)',
+                border: isOwner
+                  ? '1px solid rgba(250, 204, 21, 0.4)'
+                  : '1px solid rgba(255, 255, 255, 0.14)',
                 color: '#f8fafc',
                 padding: '4px 9px',
                 borderRadius: 999,
@@ -132,11 +143,7 @@ export default function Nav() {
                 cursor: 'pointer',
               }}
             >
-              {user.avatar ? (
-                <img src={user.avatar} alt="" style={{ width: 16, height: 16, borderRadius: '50%' }} />
-              ) : (
-                <span style={{ fontSize: 11 }}>👤</span>
-              )}
+              <span style={{ fontSize: 11 }}>{isOwner ? '👑' : isPremium ? '⭐' : '👤'}</span>
               <span>{user.name.split(' ')[0]}</span>
               <span style={{ fontSize: 9, opacity: 0.7 }}>▼</span>
             </button>
@@ -147,7 +154,7 @@ export default function Nav() {
                   position: 'absolute',
                   right: 0,
                   top: 'calc(100% + 8px)',
-                  minWidth: 185,
+                  minWidth: 205,
                   background: '#0f172a',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
                   borderRadius: 14,
@@ -157,11 +164,54 @@ export default function Nav() {
                 }}
               >
                 <div style={{ padding: '4px 8px 8px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 6 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fff' }}>{user.name}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fff' }}>{user.name}</span>
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: 999,
+                        background: isOwner
+                          ? 'rgba(250, 204, 21, 0.18)'
+                          : isPremium
+                          ? 'rgba(56, 189, 248, 0.18)'
+                          : 'rgba(148, 163, 184, 0.15)',
+                        color: isOwner ? '#facc15' : isPremium ? '#38bdf8' : '#94a3b8',
+                      }}
+                    >
+                      {isOwner ? 'OWNER' : isPremium ? 'PREMIUM' : 'NORMAL'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
                     {user.email}
                   </div>
                 </div>
+
+                {isOwner && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setAdminOpen(true)
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'rgba(250, 204, 21, 0.14)',
+                      border: '1px solid rgba(250, 204, 21, 0.3)',
+                      color: '#facc15',
+                      padding: '7px 10px',
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginBottom: 6,
+                    }}
+                  >
+                    👑 Owner Admin Panel
+                  </button>
+                )}
+
                 <button
                   onClick={logout}
                   style={{
@@ -209,6 +259,13 @@ export default function Nav() {
         onClose={() => setModalOpen(false)}
         onSuccess={(u) => setUser(u)}
       />
+
+      {isOwner && (
+        <AdminModal
+          open={adminOpen}
+          onClose={() => setAdminOpen(false)}
+        />
+      )}
     </>
   )
 }
