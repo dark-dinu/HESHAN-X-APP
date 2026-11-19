@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import mongoose from 'mongoose'
-import { User, hashPassword, verifyPassword, createSessionToken, verifySessionToken } from '@/lib/auth'
+import {
+  User,
+  hashPassword,
+  verifyPassword,
+  createSessionToken,
+  verifySessionToken,
+  isOwnerEmail,
+} from '@/lib/auth'
 
 const MONGODB_URI = process.env.MONGODB_URI || ''
 
@@ -11,15 +18,34 @@ async function ensureDb() {
   await mongoose.connect(MONGODB_URI)
 }
 
-// දැනට login වෙලා ඉන්න user ගේ විස්තර ලබාගැනීම
 export async function GET() {
   const cookieStore = await cookies()
   const token = cookieStore.get('heshan_session')?.value
-  const user = verifySessionToken(token)
-  return NextResponse.json({ user })
+  const sessionUser = verifySessionToken(token)
+  if (!sessionUser) return NextResponse.json({ user: null })
+
+  try {
+    await ensureDb()
+    const dbUser = await User.findOne({ email: sessionUser.email }).lean()
+    if (dbUser) {
+      const owner = isOwnerEmail(dbUser.email)
+      const latestPlan = owner ? 'premium' : (dbUser.plan || 'normal')
+      return NextResponse.json({
+        user: {
+          id: String(dbUser._id),
+          name: dbUser.name,
+          email: dbUser.email,
+          avatar: dbUser.avatar || '',
+          plan: latestPlan,
+          isOwner: owner,
+        },
+      })
+    }
+  } catch {}
+
+  return NextResponse.json({ user: sessionUser })
 }
 
-// Register / Login / Logout
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
@@ -50,13 +76,22 @@ export async function POST(req: Request) {
       if (exists) {
         return NextResponse.json({ error: 'මෙම Gmail ලිපිනය දැනටමත් Register වී ඇත. Login වන්න.' }, { status: 400 })
       }
+      const owner = isOwnerEmail(email)
       const created = await User.create({
         name,
         email,
         passwordHash: hashPassword(password),
         provider: 'credentials',
+        plan: owner ? 'premium' : 'normal',
       })
-      const sessionUser = { id: String(created._id), name: created.name, email: created.email, avatar: '' }
+      const sessionUser = {
+        id: String(created._id),
+        name: created.name,
+        email: created.email,
+        avatar: '',
+        plan: owner ? ('premium' as const) : ('normal' as const),
+        isOwner: owner,
+      }
       const token = createSessionToken(sessionUser)
       const res = NextResponse.json({ user: sessionUser })
       res.cookies.set('heshan_session', token, {
@@ -75,12 +110,20 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'මෙම Gmail ලිපිනයට ගිණුමක් නැත. Register වන්න.' }, { status: 404 })
       }
       if (user.provider === 'google' && !user.passwordHash) {
-        return NextResponse.json({ error: 'මෙම ගිණුම Google Login හරහා සාදා ඇත. Continue with Google භාවිතා කරන්න.' }, { status: 400 })
+        return NextResponse.json({ error: 'මෙම ගිණුම Google Login හරහා සාදා ඇත.' }, { status: 400 })
       }
       if (!verifyPassword(password, user.passwordHash)) {
         return NextResponse.json({ error: 'Password එක වැරදියි. නැවත පරීක්ෂා කරන්න.' }, { status: 401 })
       }
-      const sessionUser = { id: String(user._id), name: user.name, email: user.email, avatar: user.avatar || '' }
+      const owner = isOwnerEmail(user.email)
+      const sessionUser = {
+        id: String(user._id),
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || '',
+        plan: owner ? ('premium' as const) : (user.plan || 'normal'),
+        isOwner: owner,
+      }
       const token = createSessionToken(sessionUser)
       const res = NextResponse.json({ user: sessionUser })
       res.cookies.set('heshan_session', token, {
