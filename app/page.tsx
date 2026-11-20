@@ -30,35 +30,34 @@ export default function HomePage() {
   const [showLimitModal, setShowLimitModal] = useState(false)
   const prevBusyRef = useRef(false)
 
-  // Check logged-in user plan (guest / normal / premium)
   useEffect(() => {
     setQuota(getQuotaState())
-    fetch('/api/auth/me', { cache: 'no-store' })
+    fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         const u = data?.user
-        if (!u) {
-          setTier('guest')
-        } else if (u.isOwner || u.plan === 'premium') {
-          setTier('premium')
-        } else {
-          setTier('normal')
-        }
+        if (!u) setTier('guest')
+        else if (u.isOwner || u.plan === 'premium') setTier('premium')
+        else setTier('normal')
       })
-      .catch(() => setTier('guest'))
+      .catch(() => {})
   }, [])
 
-  // Trigger usage count & every-2nd-download full-screen skippable ad when download finishes
+  // Count completed download after result renders so download speed is never slowed down
   useEffect(() => {
     if (prevBusyRef.current && !dl.busy && dl.result && !dl.error) {
-      const { nextState, shouldShowAd } = recordDownloadUsage(tier)
-      setQuota(nextState)
-      if (shouldShowAd) {
-        setShowAd(true)
-      }
+      const finishedUrl = url.trim()
+      const timer = setTimeout(() => {
+        const { nextState, shouldShowAd } = recordDownloadUsage(tier, finishedUrl)
+        setQuota(nextState)
+        if (shouldShowAd) {
+          setShowAd(true)
+        }
+      }, 1200)
+      return () => clearTimeout(timer)
     }
     prevBusyRef.current = dl.busy
-  }, [dl.busy, dl.result, dl.error, tier])
+  }, [dl.busy, dl.result, dl.error, tier, url])
 
   useEffect(() => {
     const s = document.documentElement.style
@@ -103,8 +102,7 @@ export default function HomePage() {
 
     const latest = getQuotaState()
     setQuota(latest)
-    const left = getRemainingDownloads(tier, latest)
-    if (left <= 0) {
+    if (getRemainingDownloads(tier, latest) <= 0) {
       setShowLimitModal(true)
       return
     }
@@ -131,7 +129,7 @@ export default function HomePage() {
       <div
         className="fade"
         style={{
-          ['--i' as any]: 2.5,
+          ['--i' as any]: 2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -228,13 +226,10 @@ export default function HomePage() {
 
       <LiveStats />
 
-      {/* Hide promo ads for Premium / Owner users */}
       {tier !== 'premium' && <ChannelPromo />}
 
-      {/* Every 2nd download Full-Screen 5s Skippable Ad (Disabled for Premium) */}
       <FullScreenAdModal open={showAd && tier !== 'premium'} onClose={() => setShowAd(false)} />
 
-      {/* Daily Limit & WhatsApp 5-Share +5 Bonus Modal */}
       <LimitShareModal
         open={showLimitModal}
         tier={tier}
