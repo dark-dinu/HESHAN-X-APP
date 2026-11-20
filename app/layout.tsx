@@ -6,7 +6,7 @@ import InstallAppBanner from '@/components/InstallAppBanner'
 export const metadata: Metadata = {
   title: 'HESHAN OFC – Media & Music App',
   description: 'YouTube, TikTok, Instagram, Facebook, Spotify, Pinterest, X & WhatsApp DP – All-in-One Fast Media Downloader',
-  manifest: '/manifest.webmanifest',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
