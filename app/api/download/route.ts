@@ -11,7 +11,7 @@ const API_BASE = 'https://api.chamindu.site/api/v1'
 const API_KEY = 'chama_api_9c55e3c6d014abbdf65054f9046a920b'
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
 
-async function getJson(url: string, init?: RequestInit) {
+async function getJson(url: string, init?: RequestInit, timeoutMs = 11000) {
   try {
     const r = await fetch(url, {
       cache: 'no-store',
@@ -21,7 +21,7 @@ async function getJson(url: string, init?: RequestInit) {
         Accept: 'application/json',
         ...(init?.headers || {}),
       },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     const text = await r.text()
     let json: any = null
@@ -36,11 +36,11 @@ async function normalizeSpotifyUrl(rawUrl: string): Promise<string> {
   let clean = rawUrl.trim().split('?')[0]
   try {
     if (/spotify\.link/i.test(clean)) {
-      const r = await fetch(clean, { redirect: 'follow', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) })
+      const r = await fetch(clean, { redirect: 'follow', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) })
       if (r.url) clean = r.url.split('?')[0]
     }
     if (/open\.spotify\.com\/(album|playlist)\//i.test(clean)) {
-      const res = await fetch(clean, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) })
+      const res = await fetch(clean, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(7000) })
       const html = await res.text()
       const trackMatch =
         html.match(/https:\/\/open\.spotify\.com\/track\/[a-zA-Z0-9]+/i)?.[0] ||
@@ -66,7 +66,7 @@ async function normalizeFacebookUrl(rawUrl: string): Promise<string> {
           Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9',
         },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(7000),
       })
       if (res.url && !res.url.includes('/login') && !res.url.includes('/share/')) {
         clean = res.url
@@ -94,7 +94,9 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
     if (!val) return
     if (typeof val === 'string') {
       const clean = val.replace(/\\\//g, '/').trim()
-      if (/^https?:\/\//i.test(clean)) urls.push(clean)
+      if (/^https?:\/\//i.test(clean) || (preferImage && /^data:image\//i.test(clean))) {
+        urls.push(clean)
+      }
       return
     }
     if (Array.isArray(val)) {
@@ -103,7 +105,8 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
     }
     if (typeof val === 'object') {
       for (const key of [
-        'profilePic', 'profile_pic', 'ppUrl', 'pp_url', 'dp', 'dp_url', 'picture', 'avatar', 'image', 'img',
+        'profilePic', 'profile_pic', 'profilePicture', 'profile_picture', 'ppUrl', 'pp_url',
+        'dp', 'dp_url', 'dpUrl', 'picture', 'avatar', 'image', 'img', 'photo', 'pic',
         'hd', 'hd_url', 'hdplay', 'video_hd', 'mp4', 'download_url', 'downloadUrl', 'dl_url',
         'audio', 'music', 'play', 'sd', 'sd_url', 'url', 'link', 'media', 'result', 'data'
       ]) {
@@ -131,15 +134,18 @@ function deepFindMediaUrl(obj: any, preferAudio = false, preferImage = false): s
       !u.includes('open.spotify.com/') &&
       !u.includes('pinterest.com/pin') &&
       !u.includes('x.com/') &&
-      !u.includes('twitter.com/')
+      !u.includes('twitter.com/') &&
+      !u.includes('chamindu.site') &&
+      !u.includes('github.com')
   )
 
   if (preferImage) {
     return (
       filtered.find(
         (u) =>
-          u.includes('pps.whatsapp.net') ||
-          u.includes('mmg.whatsapp.net') ||
+          u.startsWith('data:image/') ||
+          u.includes('whatsapp.net') ||
+          u.includes('scontent') ||
           u.includes('pinimg.com') ||
           /\.(jpg|jpeg|png|webp)/i.test(u)
       ) ||
@@ -171,6 +177,53 @@ function pickThumb(obj: any): string {
 
 function cleanTitle(raw: string, fallback: string) {
   return (raw || fallback).replace(/[\\/:*?"<>|\n\r]/g, ' ').trim().slice(0, 55) || fallback
+}
+
+// Race all endpoints in parallel so the fastest working server wins immediately
+async function raceEndpoints(
+  endpoints: string[],
+  opts: { isAudio: boolean; image: boolean; defExt: string }
+): Promise<{ mediaUrl: string; mediaExt: string; lastJson: any; lastDebug: string }> {
+  let lastDebug = ''
+
+  if (endpoints.length === 0) {
+    return { mediaUrl: '', mediaExt: opts.defExt, lastJson: null, lastDebug: 'no endpoints' }
+  }
+
+  try {
+    const winner = await Promise.any(
+      endpoints.map(async (target) => {
+        const r = await getJson(target, undefined, 11000)
+        lastDebug = `HTTP ${r.status}: ${(r.text || '').slice(0, 120)}`
+        if (!r.json) throw new Error('no json')
+
+        const picked = pickMedia(r.json, { audio: opts.isAudio, image: opts.image })
+        if (picked?.url) {
+          return {
+            mediaUrl: picked.url,
+            mediaExt: picked.ext || opts.defExt,
+            lastJson: r.json,
+            lastDebug,
+          }
+        }
+
+        const deepUrl = deepFindMediaUrl(r.json, opts.isAudio, opts.image)
+        if (deepUrl) {
+          return {
+            mediaUrl: deepUrl,
+            mediaExt: opts.defExt,
+            lastJson: r.json,
+            lastDebug,
+          }
+        }
+
+        throw new Error('no media url in response')
+      })
+    )
+    return winner
+  } catch {
+    return { mediaUrl: '', mediaExt: opts.defExt, lastJson: null, lastDebug }
+  }
 }
 
 export async function POST(req: Request) {
@@ -253,11 +306,14 @@ export async function POST(req: Request) {
       case 'whatsapp': {
         let num = input.replace(/\D/g, '')
         if (num.startsWith('0') && num.length === 10) num = '94' + num.slice(1)
+        if (num.length === 9 && num.startsWith('7')) num = '94' + num
         waNumber = num
         image = true
         defExt = 'jpg'
         endpoints.push(
           `${API_BASE}/media/whatsapp_dp/infodl?q=${num}${k}`,
+          `${API_BASE}/media/whatsapp_dp/infodl?number=${num}${k}`,
+          `${API_BASE}/stalk/whatsapp?number=${num}${k}`,
           `https://api.giftedtech.web.id/api/tools/wadp?apikey=gifted&number=${num}`,
           `https://api.siputzx.my.id/api/stalk/whatsapp?number=${num}`,
           `https://bk9.fun/tools/wadp?q=${num}`
@@ -266,30 +322,12 @@ export async function POST(req: Request) {
       }
     }
 
-    let lastJson: any = null
-    let lastDebug = ''
-    let mediaUrl = ''
-    let mediaExt = defExt
-
-    for (const target of endpoints) {
-      const r = await getJson(target)
-      lastDebug = `HTTP ${r.status}: ${(r.text || '').slice(0, 140)}`
-      if (!r.json) continue
-      lastJson = r.json
-
-      const picked = pickMedia(r.json, { audio: isAudio, image })
-      if (picked?.url) {
-        mediaUrl = picked.url
-        if (picked.ext) mediaExt = picked.ext
-        break
-      }
-
-      const deepUrl = deepFindMediaUrl(r.json, isAudio, image)
-      if (deepUrl) {
-        mediaUrl = deepUrl
-        break
-      }
-    }
+    // Race all primary endpoints simultaneously for maximum speed
+    let { mediaUrl, mediaExt, lastJson, lastDebug } = await raceEndpoints(endpoints, {
+      isAudio,
+      image,
+      defExt,
+    })
 
     // Facebook Backup API
     if (!mediaUrl && platform === 'facebook') {
@@ -297,7 +335,7 @@ export async function POST(req: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: input, quality: 'best' }),
-      })
+      }, 9000)
       if (fbBackup.json) {
         const bUrl = deepFindMediaUrl(fbBackup.json, false, false)
         if (bUrl) {
@@ -310,7 +348,7 @@ export async function POST(req: Request) {
     // TikTok Backup API
     if (!mediaUrl && platform === 'tiktok') {
       try {
-        const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(10000) })
+        const tr = await fetch(`https://www.tikwm.com/api/?url=${enc}&hd=1`, { signal: AbortSignal.timeout(8000) })
         const tj = await tr.json()
         const link = isAudio ? tj?.data?.music : (tj?.data?.hdplay || tj?.data?.play)
         if (link) {
@@ -327,15 +365,15 @@ export async function POST(req: Request) {
     if (!mediaUrl) {
       return NextResponse.json({
         error: platform === 'whatsapp'
-          ? 'WhatsApp DP server temporarily unavailable or number has no public DP.'
+          ? 'Could not fetch WhatsApp DP. Make sure the number has a public profile photo (e.g. 94719845166).'
           : `Unable to fetch media (${lastDebug})`,
       }, { status: 404 })
     }
 
-    // WhatsApp DP සඳහා එතනම Preview Image එක පෙන්නලා Download වීමට
+    // WhatsApp DP preview + direct download
     if (platform === 'whatsapp') {
       const wpTitle = cleanTitle(pickTitle(lastJson), `WA_DP_${waNumber || 'HESHAN_OFC'}`)
-      const token = sealLink(mediaUrl, `${wpTitle}.jpg`)
+      const token = mediaUrl.startsWith('data:') ? '' : sealLink(mediaUrl, `${wpTitle}.jpg`)
       return NextResponse.json({
         token,
         directHref: mediaUrl,
