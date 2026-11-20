@@ -6,10 +6,10 @@ export type QuotaState = {
   bonus: number
   shares: number
   bonusClaimed: boolean
-  adsShownCount: number
+  lastUrl?: string
 }
 
-const STORAGE_KEY = 'heshan_ofc_quota_v1'
+const STORAGE_KEY = 'heshan_ofc_quota_v2'
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10)
@@ -18,7 +18,7 @@ function todayKey(): string {
 export function getQuotaState(): QuotaState {
   const today = todayKey()
   if (typeof window === 'undefined') {
-    return { date: today, used: 0, bonus: 0, shares: 0, bonusClaimed: false, adsShownCount: 0 }
+    return { date: today, used: 0, bonus: 0, shares: 0, bonusClaimed: false }
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -31,12 +31,12 @@ export function getQuotaState(): QuotaState {
           bonus: Number(parsed.bonus || 0),
           shares: Number(parsed.shares || 0),
           bonusClaimed: Boolean(parsed.bonusClaimed),
-          adsShownCount: Number(parsed.adsShownCount || 0),
+          lastUrl: parsed.lastUrl || '',
         }
       }
     }
   } catch {}
-  const fresh: QuotaState = { date: today, used: 0, bonus: 0, shares: 0, bonusClaimed: false, adsShownCount: 0 }
+  const fresh: QuotaState = { date: today, used: 0, bonus: 0, shares: 0, bonusClaimed: false }
   saveQuotaState(fresh)
   return fresh
 }
@@ -64,7 +64,10 @@ export function getRemainingDownloads(tier: PlanTier, state: QuotaState): number
   return Math.max(0, getTotalLimit(tier, state) - state.used)
 }
 
-export function recordDownloadUsage(tier: PlanTier): {
+export function recordDownloadUsage(
+  tier: PlanTier,
+  url: string
+): {
   nextState: QuotaState
   shouldShowAd: boolean
 } {
@@ -72,13 +75,17 @@ export function recordDownloadUsage(tier: PlanTier): {
   if (tier === 'premium') {
     return { nextState: current, shouldShowAd: false }
   }
+  // Prevent counting the exact same finished URL twice
+  if (url && current.lastUrl === url) {
+    return { nextState: current, shouldShowAd: false }
+  }
   const nextUsed = current.used + 1
-  // Play 1 full-screen skippable ad after every 2nd download (2, 4, 6, 8...)
-  const shouldShowAd = nextUsed > 0 && nextUsed % 2 === 0
+  // Trigger ad strictly after every 2nd completed download (2, 4, 6, 8...)
+  const shouldShowAd = nextUsed >= 2 && nextUsed % 2 === 0
   const nextState: QuotaState = {
     ...current,
     used: nextUsed,
-    adsShownCount: shouldShowAd ? current.adsShownCount + 1 : current.adsShownCount,
+    lastUrl: url,
   }
   saveQuotaState(nextState)
   return { nextState, shouldShowAd }
