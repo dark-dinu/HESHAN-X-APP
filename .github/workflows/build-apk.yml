@@ -1,0 +1,58 @@
+name: Build HESHAN OFC Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Capacitor & Tools
+        run: |
+          mkdir heshan-app && cd heshan-app
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "HESHAN OFC" "com.heshanofc.app" --web-dir=www
+          mkdir www
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://hesh-ofc.onrender.com"></head><body style="background:#07080d"></body></html>' > www/index.html
+          npx cap add android
+
+      - name: Configure Live Server URL & App Icon
+        run: |
+          cd heshan-app
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.heshanofc.app",
+            "appName": "HESHAN OFC",
+            "webDir": "www",
+            "server": {
+              "url": "https://hesh-ofc.onrender.com",
+              "cleartext": true
+            }
+          }
+          EOF
+          curl -sL "https://hesh-ofc.onrender.com/icon-512.png" -o icon.png || true
+          if [ -s icon.png ]; then
+            for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp icon.png android/app/src/main/res/$dir/ic_launcher.png || true
+              cp icon.png android/app/src/main/res/$dir/ic_launcher_round.png || true
+            done
+          fi
+
+      - name: Build Android APK
+        run: |
+          cd heshan-app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../../HESHAN-OFC.apk
+
+      - name: Upload HESHAN-OFC.apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: HESHAN-OFC-APK
+          path: HESHAN-OFC.apk
