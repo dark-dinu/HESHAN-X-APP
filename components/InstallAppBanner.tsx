@@ -33,8 +33,7 @@ export default function InstallAppBanner() {
 
   if (isInstalled || dismissed) return null
 
-  const handleInstallOrDownload = async () => {
-    // 1. Trigger 1-tap Chrome native install popup if ready
+  const handleInstall = async () => {
     if (deferredPrompt) {
       try {
         deferredPrompt.prompt()
@@ -46,22 +45,6 @@ export default function InstallAppBanner() {
         }
       } catch {}
     }
-
-    // 2. Check if HESHAN-OFC.apk exists in /public before downloading (prevents "download failed")
-    try {
-      const check = await fetch('/HESHAN-OFC.apk', { method: 'HEAD' })
-      if (check.ok) {
-        const a = document.createElement('a')
-        a.href = '/HESHAN-OFC.apk'
-        a.download = 'HESHAN-OFC.apk'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        return
-      }
-    } catch {}
-
-    // 3. Otherwise show clean 2-step install modal
     setModalOpen(true)
   }
 
@@ -117,7 +100,7 @@ export default function InstallAppBanner() {
 
         <button
           type="button"
-          onClick={handleInstallOrDownload}
+          onClick={handleInstall}
           style={{
             padding: '9px 14px',
             borderRadius: 11,
