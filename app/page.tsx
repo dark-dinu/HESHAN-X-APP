@@ -5,7 +5,17 @@ import CompactProgress from '@/components/CompactProgress'
 import ResultCard from '@/components/ResultCard'
 import LiveStats from '@/components/LiveStats'
 import ChannelPromo from '@/components/ChannelPromo'
+import FullScreenAdModal from '@/components/FullScreenAdModal'
+import LimitShareModal from '@/components/LimitShareModal'
 import { useDownloader } from '@/hooks/useDownloader'
+import {
+  PlanTier,
+  QuotaState,
+  getQuotaState,
+  getRemainingDownloads,
+  getTotalLimit,
+  recordDownloadUsage,
+} from '@/lib/quota'
 
 export default function HomePage() {
   const [plat, setPlat] = useState<PlatformConfig>(PLATFORMS[0])
@@ -13,6 +23,42 @@ export default function HomePage() {
   const [url, setUrl] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const dl = useDownloader()
+
+  const [tier, setTier] = useState<PlanTier>('guest')
+  const [quota, setQuota] = useState<QuotaState>(() => getQuotaState())
+  const [showAd, setShowAd] = useState(false)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const prevBusyRef = useRef(false)
+
+  // Check logged-in user plan (guest / normal / premium)
+  useEffect(() => {
+    setQuota(getQuotaState())
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const u = data?.user
+        if (!u) {
+          setTier('guest')
+        } else if (u.isOwner || u.plan === 'premium') {
+          setTier('premium')
+        } else {
+          setTier('normal')
+        }
+      })
+      .catch(() => setTier('guest'))
+  }, [])
+
+  // Trigger usage count & every-2nd-download full-screen skippable ad when download finishes
+  useEffect(() => {
+    if (prevBusyRef.current && !dl.busy && dl.result && !dl.error) {
+      const { nextState, shouldShowAd } = recordDownloadUsage(tier)
+      setQuota(nextState)
+      if (shouldShowAd) {
+        setShowAd(true)
+      }
+    }
+    prevBusyRef.current = dl.busy
+  }, [dl.busy, dl.result, dl.error, tier])
 
   useEffect(() => {
     const s = document.documentElement.style
@@ -54,8 +100,20 @@ export default function HomePage() {
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!url.trim() || dl.busy) return
+
+    const latest = getQuotaState()
+    setQuota(latest)
+    const left = getRemainingDownloads(tier, latest)
+    if (left <= 0) {
+      setShowLimitModal(true)
+      return
+    }
+
     dl.run({ url: url.trim(), platform: plat.id, format: plat.formats[fmtIdx]?.id || 'hd' })
   }
+
+  const remaining = getRemainingDownloads(tier, quota)
+  const totalLimit = getTotalLimit(tier, quota)
 
   return (
     <>
@@ -68,6 +126,63 @@ export default function HomePage() {
       <p className="sub fade" style={{ ['--i' as any]: 2 }}>
         Paste any link or number. Platform will be auto-detected.
       </p>
+
+      {/* Daily Quota & Bonus Status Bar */}
+      <div
+        className="fade"
+        style={{
+          ['--i' as any]: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+          maxWidth: 680,
+          margin: '0 auto 14px',
+          padding: '8px 14px',
+          borderRadius: 14,
+          background: 'rgba(15, 23, 42, 0.72)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: 12.5,
+        }}
+      >
+        {tier === 'premium' ? (
+          <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+            👑 VIP Premium Active • Unlimited Downloads &amp; Zero Ads
+          </span>
+        ) : (
+          <>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>
+              ⚡ Today&apos;s Downloads:{' '}
+              <strong style={{ color: remaining > 0 ? '#4ade80' : '#f87171' }}>
+                {remaining} / {totalLimit} Left
+              </strong>
+              {quota.bonus > 0 && (
+                <span style={{ color: '#38bdf8', marginLeft: 6 }}>(+5 Bonus Active)</span>
+              )}
+            </span>
+
+            {!quota.bonusClaimed && (
+              <button
+                type="button"
+                onClick={() => setShowLimitModal(true)}
+                style={{
+                  border: '1px solid rgba(34, 197, 94, 0.35)',
+                  background: 'rgba(34, 197, 94, 0.14)',
+                  color: '#4ade80',
+                  padding: '4px 10px',
+                  borderRadius: 9,
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                +5 Free (WhatsApp Share)
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="plats fade" style={{ ['--i' as any]: 3 }}>
         {PLATFORMS.map((p) => (
@@ -112,7 +227,21 @@ export default function HomePage() {
       </form>
 
       <LiveStats />
-      <ChannelPromo />
+
+      {/* Hide promo ads for Premium / Owner users */}
+      {tier !== 'premium' && <ChannelPromo />}
+
+      {/* Every 2nd download Full-Screen 5s Skippable Ad (Disabled for Premium) */}
+      <FullScreenAdModal open={showAd && tier !== 'premium'} onClose={() => setShowAd(false)} />
+
+      {/* Daily Limit & WhatsApp 5-Share +5 Bonus Modal */}
+      <LimitShareModal
+        open={showLimitModal}
+        tier={tier}
+        quota={quota}
+        onClose={() => setShowLimitModal(false)}
+        onQuotaUpdate={(next) => setQuota(next)}
+      />
     </>
   )
 }
