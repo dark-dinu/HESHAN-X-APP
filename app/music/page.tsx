@@ -5,7 +5,7 @@ type TrackItem = {
   id: string
   title: string
   artist: string
-  album?: string
+  views?: string
   duration?: string
   thumbnail?: string
   url: string
@@ -19,16 +19,18 @@ type ActiveStream = {
   downloadUrl: string
 }
 
-const TRENDING = [
-  'Kamali Dewiyo',
-  'Shape of You',
-  'Lelena',
-  'Maa Dihaa - DILU Beats',
+const CATEGORIES = [
+  { label: 'Popular Hits', query: 'Sinhala Trending Songs 2026' },
+  { label: 'Sinhala Top', query: 'Kamali Dewiyo Lelena Sinhala' },
+  { label: 'DILU Beats', query: 'DILU Beats' },
+  { label: 'Global Viral', query: 'Ed Sheeran The Weeknd Top Hits' },
 ]
 
 export default function MusicHubPage() {
   const [query, setQuery] = useState('')
-  const [searching, setSearching] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('Popular Hits')
+  const [isDefaultFeed, setIsDefaultFeed] = useState(true)
+  const [searching, setSearching] = useState(true)
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null)
   const [tracks, setTracks] = useState<TrackItem[]>([])
   const [activeStream, setActiveStream] = useState<ActiveStream | null>(null)
@@ -44,6 +46,31 @@ export default function MusicHubPage() {
     const s = Math.floor(sec % 60)
     return `${m}:${s < 10 ? '0' : ''}${s}`
   }
+
+  const fetchTracks = async (searchTerm: string, isAuto = false) => {
+    setError('')
+    setSearching(true)
+    try {
+      const res = await fetch(`/api/music/search?q=${encodeURIComponent(searchTerm)}`)
+      const data = await res.json()
+      if (!res.ok) {
+        if (!isAuto) setTracks([])
+        setError(data.error || 'No matching tracks found.')
+      } else {
+        setTracks(data.tracks || [])
+        setIsDefaultFeed(isAuto)
+      }
+    } catch {
+      setError('Unable to load tracks right now. Please try again.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  // Auto-load trending tracks on initial page open so the feed is never empty
+  useEffect(() => {
+    fetchTracks(CATEGORIES[0].query, true)
+  }, [])
 
   const playTrack = async (track: TrackItem) => {
     setError('')
@@ -93,39 +120,30 @@ export default function MusicHubPage() {
     }
     setQuery(q)
     setError('')
-    setSearching(true)
 
-    try {
-      const isDirectLink =
-        q.includes('open.spotify.com/track/') ||
-        q.includes('youtube.com/watch') ||
-        q.includes('youtu.be/') ||
-        q.includes('youtube.com/shorts/')
+    const isDirectLink =
+      q.includes('open.spotify.com/track/') ||
+      q.includes('youtube.com/watch') ||
+      q.includes('youtu.be/') ||
+      q.includes('youtube.com/shorts/')
 
-      if (isDirectLink) {
-        await playTrack({
-          id: 'direct',
-          title: q.includes('spotify') ? 'Spotify Track' : 'YouTube Audio',
-          artist: '320kbps Master Audio',
-          url: q,
-        })
-        setSearching(false)
-        return
-      }
-
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`)
-      const data = await res.json()
-      if (!res.ok) {
-        setTracks([])
-        setError(data.error || 'No matching tracks found.')
-      } else {
-        setTracks(data.tracks || [])
-      }
-    } catch {
-      setError('Search failed. Check your connection and try again.')
-    } finally {
-      setSearching(false)
+    if (isDirectLink) {
+      await playTrack({
+        id: 'direct',
+        title: q.includes('spotify') ? 'Spotify Track' : 'YouTube Audio',
+        artist: '320kbps Master Audio',
+        url: q,
+      })
+      return
     }
+
+    await fetchTracks(q, false)
+  }
+
+  const handleCategoryClick = (cat: { label: string; query: string }) => {
+    setActiveCategory(cat.label)
+    setQuery('')
+    fetchTracks(cat.query, true)
   }
 
   const togglePlay = () => {
@@ -171,7 +189,7 @@ export default function MusicHubPage() {
             Music <span>Hub</span>
           </h1>
           <p className="mh-subtitle">
-            Stream millions of tracks instantly or paste any Spotify &amp; YouTube link to listen and download in high-definition audio.
+            Stream trending hits or search any song by name, Spotify &amp; YouTube link in 320kbps HD audio.
           </p>
         </header>
 
@@ -202,8 +220,9 @@ export default function MusicHubPage() {
                   className="mh-clear"
                   onClick={() => {
                     setQuery('')
-                    setTracks([])
                     setError('')
+                    fetchTracks(CATEGORIES[0].query, true)
+                    setActiveCategory(CATEGORIES[0].label)
                   }}
                 >
                   Clear
@@ -212,7 +231,7 @@ export default function MusicHubPage() {
             </div>
 
             <button type="submit" className="mh-btn-primary" disabled={searching}>
-              {searching ? (
+              {searching && !isDefaultFeed ? (
                 <>
                   <span className="mh-spinner" />
                   Searching Catalog...
@@ -230,23 +249,27 @@ export default function MusicHubPage() {
             </button>
           </form>
 
+          {/* Category Filter Chips */}
           <div className="mh-trending">
-            <span className="mh-trending-label">Trending:</span>
+            <span className="mh-trending-label">Browse Charts:</span>
             <div className="mh-chips">
-              {TRENDING.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="mh-chip"
-                  onClick={() => handleSearch(item)}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    <polyline points="17 6 23 6 23 12" />
-                  </svg>
-                  {item}
-                </button>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const isCatActive = isDefaultFeed && activeCategory === cat.label
+                return (
+                  <button
+                    key={cat.label}
+                    type="button"
+                    className={`mh-chip ${isCatActive ? 'active' : ''}`}
+                    onClick={() => handleCategoryClick(cat)}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                      <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                    {cat.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -388,103 +411,146 @@ export default function MusicHubPage() {
           </section>
         )}
 
-        {/* Track Results List */}
-        {tracks.length > 0 && (
-          <section className="mh-results">
-            <div className="mh-results-head">
-              <h3>Top Matches</h3>
-              <span>{tracks.length} tracks</span>
-            </div>
+        {/* YouTube-Style Large Cover Feed */}
+        <section className="mh-results">
+          <div className="mh-results-head">
+            <h3>
+              {isDefaultFeed ? `🔥 ${activeCategory}` : `Search Results for "${query}"`}
+            </h3>
+            <span>{searching ? 'Loading...' : `${tracks.length} tracks`}</span>
+          </div>
 
-            <div className="mh-list">
+          {searching && tracks.length === 0 ? (
+            <div className="mh-skeleton-grid">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="mh-skel-card">
+                  <div className="mh-skel-thumb" />
+                  <div className="mh-skel-line w80" />
+                  <div className="mh-skel-line w50" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mh-yt-grid">
               {tracks.map((track, idx) => {
                 const isLoadingThis = loadingTrackId === track.id
                 const isCurrent = activeStream?.id === track.id
                 return (
-                  <div
+                  <article
                     key={track.id}
-                    className={`mh-item ${isCurrent ? 'active' : ''}`}
+                    className={`mh-yt-card ${isCurrent ? 'active' : ''}`}
                     onClick={() => !isLoadingThis && playTrack(track)}
                   >
-                    <span className="mh-idx">{idx + 1}</span>
+                    {/* Large YouTube-Style Thumbnail Banner */}
+                    <div className="mh-yt-media">
+                      {track.thumbnail ? (
+                        <img src={track.thumbnail} alt={track.title} className="mh-yt-img" loading="lazy" />
+                      ) : (
+                        <div className="mh-yt-fallback">
+                          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M9 18V5l12-2v13" />
+                            <circle cx="6" cy="18" r="3" />
+                            <circle cx="18" cy="16" r="3" />
+                          </svg>
+                        </div>
+                      )}
 
-                    {track.thumbnail ? (
-                      <img src={track.thumbnail} alt={track.title} className="mh-thumb" />
-                    ) : (
-                      <div className="mh-thumb-fallback">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M9 18V5l12-2v13" />
-                          <circle cx="6" cy="18" r="3" />
-                          <circle cx="18" cy="16" r="3" />
-                        </svg>
-                      </div>
-                    )}
+                      <div className="mh-yt-shade" />
 
-                    <div className="mh-item-info">
-                      <div className="mh-item-title">{track.title}</div>
-                      <div className="mh-item-sub">
-                        {track.artist}
-                        {track.duration ? ` • ${track.duration}` : ''}
-                      </div>
+                      {/* Rank / Top Badge */}
+                      <span className="mh-yt-rank">#{idx + 1}</span>
+
+                      {/* Duration Pill */}
+                      {track.duration && (
+                        <span className="mh-yt-dur">{track.duration}</span>
+                      )}
+
+                      {/* Center Play Button */}
+                      <button
+                        type="button"
+                        className={`mh-yt-play ${isCurrent ? 'on' : ''}`}
+                        disabled={isLoadingThis}
+                        aria-label={`Play ${track.title}`}
+                      >
+                        {isLoadingThis ? (
+                          <span className="mh-spinner sm" />
+                        ) : isCurrent && isPlaying ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="4" width="4" height="16" rx="1" />
+                            <rect x="14" y="4" width="4" height="16" rx="1" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="7 4 20 12 7 20 7 4" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      className={`mh-item-btn ${isCurrent ? 'playing' : ''}`}
-                      disabled={isLoadingThis}
-                    >
-                      {isLoadingThis ? (
-                        <span className="mh-spinner sm" />
-                      ) : isCurrent && isPlaying ? (
-                        'Playing'
-                      ) : (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="6 4 20 12 6 20 6 4" />
+                    {/* Track Title, Artist & Views Info */}
+                    <div className="mh-yt-body">
+                      <div className="mh-yt-avatar">
+                        {track.thumbnail ? (
+                          <img src={track.thumbnail} alt="" />
+                        ) : (
+                          <span>♪</span>
+                        )}
+                      </div>
+
+                      <div className="mh-yt-text">
+                        <h4 className="mh-yt-title">{track.title}</h4>
+                        <div className="mh-yt-artist">
+                          <span>{track.artist}</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#38bdf8">
+                            <path d="M12 2L14.8 4.4L18.4 4.1L19.4 7.6L22.3 9.7L21 13.1L22.3 16.5L19.4 18.6L18.4 22.1L14.8 21.8L12 24.2L9.2 21.8L5.6 22.1L4.6 18.6L1.7 16.5L3 13.1L1.7 9.7L4.6 7.6L5.6 4.1L9.2 4.4L12 2ZM10.5 16.5L17 10L15.6 8.6L10.5 13.7L8.4 11.6L7 13L10.5 16.5Z" />
                           </svg>
-                          Play
-                        </>
-                      )}
-                    </button>
-                  </div>
+                        </div>
+                        <div className="mh-yt-stats">
+                          <span>{track.views || '1.2M plays'}</span>
+                          <span>•</span>
+                          <span className="mh-yt-hq">320kbps MP3</span>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
                 )
               })}
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </main>
   )
 }
 
 const css = `
-.mh-root{position:relative;min-height:100vh;overflow-x:hidden;padding:28px 16px 120px;color:#f8fafc;
+.mh-root{position:relative;min-height:100vh;overflow-x:hidden;padding:24px 16px 120px;color:#f8fafc;
   background:#05070d;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
 .mh-orb{position:fixed;border-radius:999px;filter:blur(95px);pointer-events:none;z-index:0}
 .mh-orb-red{top:-140px;left:50%;transform:translateX(-50%);width:480px;height:300px;
   background:radial-gradient(circle,rgba(239,68,68,.24),rgba(220,38,38,.06) 60%,transparent)}
 .mh-orb-emerald{bottom:-160px;right:-100px;width:360px;height:360px;
   background:radial-gradient(circle,rgba(16,185,129,.12),transparent 70%)}
-.mh-container{position:relative;z-index:1;max-width:540px;margin:0 auto}
+.mh-container{position:relative;z-index:1;max-width:640px;margin:0 auto}
 
-.mh-hero{margin-bottom:22px}
-.mh-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;margin-bottom:14px;
+.mh-hero{margin-bottom:20px}
+.mh-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;margin-bottom:12px;
   background:rgba(15,23,42,.75);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(12px);
   font-size:11px;font-weight:700;letter-spacing:.06em;color:#cbd5e1}
 .mh-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;box-shadow:0 0 10px #ef4444}
 .mh-pill-sep{color:#475569}
 .mh-pill-hi{color:#34d399}
-.mh-title{margin:0 0 8px;font-size:36px;font-weight:800;letter-spacing:-.03em;line-height:1.1;color:#fff}
+.mh-title{margin:0 0 6px;font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.1;color:#fff}
 .mh-title span{background:linear-gradient(135deg,#ef4444 0%,#f97316 50%,#10b981 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.mh-subtitle{margin:0;font-size:13.5px;line-height:1.6;color:#94a3b8}
+.mh-subtitle{margin:0;font-size:13.5px;line-height:1.55;color:#94a3b8}
 
 .mh-search-box{background:linear-gradient(180deg,rgba(17,24,39,.84),rgba(9,13,22,.92));
-  border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:16px;
+  border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:15px;
   box-shadow:0 24px 60px -15px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.06) inset;
   backdrop-filter:blur(18px)}
-.mh-search-form{display:flex;flex-direction:column;gap:11px}
-.mh-input-shell{position:relative;display:flex;align-items:center;height:50px;padding:0 8px 0 42px;
+.mh-search-form{display:flex;flex-direction:column;gap:10px}
+.mh-input-shell{position:relative;display:flex;align-items:center;height:48px;padding:0 8px 0 42px;
   border-radius:15px;background:rgba(3,7,18,.78);border:1px solid rgba(148,163,184,.16);
   transition:border-color .2s,box-shadow .2s}
 .mh-input-shell:focus-within{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.14)}
@@ -497,7 +563,7 @@ const css = `
   font:600 12px inherit;cursor:pointer;transition:.15s}
 .mh-clear:hover{background:rgba(255,255,255,.15);color:#fff}
 
-.mh-btn-primary{display:flex;align-items:center;justify-content:center;gap:9px;height:48px;border:0;
+.mh-btn-primary{display:flex;align-items:center;justify-content:center;gap:9px;height:46px;border:0;
   border-radius:15px;cursor:pointer;font:700 14.5px inherit;color:#fff;letter-spacing:.01em;
   background:linear-gradient(135deg,#ef4444 0%,#dc2626 55%,#b91c1c 100%);
   box-shadow:0 12px 28px -8px rgba(239,68,68,.65),0 1px 0 rgba(255,255,255,.22) inset;
@@ -505,15 +571,15 @@ const css = `
 .mh-btn-primary:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}
 .mh-btn-primary:disabled{opacity:.75;cursor:not-allowed}
 
-.mh-trending{margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.06)}
+.mh-trending{margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
 .mh-trending-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
   letter-spacing:.07em;color:#64748b;margin-bottom:8px}
 .mh-chips{display:flex;flex-wrap:wrap;gap:7px}
-.mh-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;
+.mh-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;
   background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;
-  font:500 12px inherit;cursor:pointer;transition:.18s}
+  font:600 12px inherit;cursor:pointer;transition:.18s}
 .mh-chip svg{color:#ef4444}
-.mh-chip:hover{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fff}
+.mh-chip:hover,.mh-chip.active{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.45);color:#fff}
 
 .mh-alert{display:flex;align-items:center;gap:9px;margin-top:14px;padding:12px 14px;border-radius:14px;
   background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.32);color:#fecaca;font-size:13px}
@@ -521,7 +587,7 @@ const css = `
 
 .mh-player{margin-top:18px;padding:18px;border-radius:24px;
   background:linear-gradient(145deg,rgba(24,24,36,.95),rgba(9,13,22,.98));
-  border:1px solid rgba(239,68,68,.32);
+  border:1px solid rgba(239,68,68,.36);
   box-shadow:0 24px 60px -15px rgba(0,0,0,.85),0 0 40px -15px rgba(239,68,68,.28)}
 .mh-player-top{display:flex;align-items:center;gap:14px}
 .mh-art-wrap{position:relative;width:66px;height:66px;border-radius:16px;flex-shrink:0;padding:2px;
@@ -565,34 +631,67 @@ const css = `
   font-size:13px;font-weight:700;box-shadow:0 8px 22px -6px rgba(16,185,129,.6);transition:.15s}
 .mh-dl-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
 
+/* YouTube-Style Large Cards Grid */
 .mh-results{margin-top:22px}
-.mh-results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
-.mh-results-head h3{margin:0;font-size:14px;font-weight:700;color:#e2e8f0}
+.mh-results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px}
+.mh-results-head h3{margin:0;font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-.01em}
 .mh-results-head span{font-size:12px;font-weight:600;color:#64748b}
-.mh-list{display:flex;flex-direction:column;gap:8px}
-.mh-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:16px;
-  background:rgba(15,23,42,.68);border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:.18s}
-.mh-item:hover{background:rgba(30,41,59,.78);border-color:rgba(255,255,255,.14)}
-.mh-item.active{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.38)}
-.mh-idx{width:18px;text-align:center;font-size:12px;font-weight:700;color:#475569;flex-shrink:0}
-.mh-item.active .mh-idx{color:#ef4444}
-.mh-thumb{width:46px;height:46px;border-radius:11px;object-fit:cover;flex-shrink:0}
-.mh-thumb-fallback{width:46px;height:46px;border-radius:11px;background:#1e293b;display:grid;
-  place-items:center;color:#64748b;flex-shrink:0}
-.mh-item-info{flex:1;min-width:0}
-.mh-item-title{font-size:13.5px;font-weight:700;color:#f8fafc;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mh-item-sub{font-size:11.5px;color:#94a3b8;margin-top:2px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mh-item-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:10px;
-  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.06);color:#e2e8f0;
-  font:700 12px inherit;cursor:pointer;flex-shrink:0;transition:.15s}
-.mh-item:hover .mh-item-btn{background:#ef4444;border-color:#ef4444;color:#fff}
-.mh-item-btn.playing{background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.4);color:#34d399}
+
+.mh-yt-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:520px){.mh-yt-grid{grid-template-columns:1fr 1fr}}
+
+.mh-yt-card{border-radius:20px;overflow:hidden;background:rgba(15,23,42,.82);
+  border:1px solid rgba(255,255,255,.08);cursor:pointer;
+  box-shadow:0 14px 35px -12px rgba(0,0,0,.65);transition:transform .2s,border-color .2s,box-shadow .2s}
+.mh-yt-card:hover{transform:translateY(-3px);border-color:rgba(239,68,68,.4);
+  box-shadow:0 20px 45px -12px rgba(239,68,68,.22)}
+.mh-yt-card.active{border-color:#ef4444;box-shadow:0 0 0 1px #ef4444,0 18px 40px -10px rgba(239,68,68,.35)}
+
+.mh-yt-media{position:relative;width:100%;aspect-ratio:16/9;background:#0b1120;overflow:hidden}
+.mh-yt-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.mh-yt-card:hover .mh-yt-img{transform:scale(1.05)}
+.mh-yt-fallback{width:100%;height:100%;display:grid;place-items:center;color:#475569;
+  background:linear-gradient(135deg,#0f172a,#1e293b)}
+.mh-yt-shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,7,13,.82) 0%,rgba(5,7,13,.15) 55%,transparent 100%)}
+
+.mh-yt-rank{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:8px;
+  background:rgba(5,7,13,.78);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);
+  font-size:11px;font-weight:800;color:#fff}
+.mh-yt-dur{position:absolute;bottom:10px;right:10px;padding:3px 8px;border-radius:7px;
+  background:rgba(5,7,13,.85);font-size:11px;font-weight:700;color:#f8fafc}
+.mh-yt-play{position:absolute;bottom:10px;left:10px;width:38px;height:38px;border-radius:50%;border:0;
+  display:grid;place-items:center;background:#ef4444;color:#fff;cursor:pointer;
+  box-shadow:0 6px 18px rgba(239,68,68,.65);transition:transform .15s}
+.mh-yt-card:hover .mh-yt-play{transform:scale(1.08)}
+.mh-yt-play.on{background:#10b981;box-shadow:0 6px 18px rgba(16,185,129,.65)}
+
+.mh-yt-body{display:flex;align-items:flex-start;gap:11px;padding:12px 13px 14px}
+.mh-yt-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  background:#1e293b;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;
+  font-size:14px;font-weight:700;color:#94a3b8}
+.mh-yt-avatar img{width:100%;height:100%;object-fit:cover}
+.mh-yt-text{flex:1;min-width:0}
+.mh-yt-title{margin:0 0 4px;font-size:14px;font-weight:700;line-height:1.35;color:#f8fafc;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mh-yt-artist{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#cbd5e1}
+.mh-yt-artist span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh-yt-stats{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;color:#94a3b8}
+.mh-yt-hq{color:#34d399;font-weight:700}
+
+/* Loading Skeletons */
+.mh-skeleton-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:520px){.mh-skeleton-grid{grid-template-columns:1fr 1fr}}
+.mh-skel-card{border-radius:20px;padding-bottom:14px;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.05);overflow:hidden}
+.mh-skel-thumb{width:100%;aspect-ratio:16/9;background:linear-gradient(90deg,#0f172a 25%,#1e293b 50%,#0f172a 75%);
+  background-size:200% 100%;animation:mh-shimmer 1.4s infinite}
+.mh-skel-line{height:12px;border-radius:6px;margin:10px 13px 0;background:#1e293b}
+.mh-skel-line.w80{width:78%}
+.mh-skel-line.w50{width:48%}
 
 .mh-spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);
   border-top-color:#fff;animation:mh-rot .7s linear infinite}
-.mh-spinner.sm{width:13px;height:13px}
+.mh-spinner.sm{width:14px;height:14px}
 @keyframes mh-rot{to{transform:rotate(360deg)}}
 @keyframes mh-eq{from{height:3px}to{height:11px}}
+@keyframes mh-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 `
