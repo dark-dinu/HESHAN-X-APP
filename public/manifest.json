@@ -1,0 +1,25 @@
+{
+  "name": "HESHAN OFC – Media & Music App",
+  "short_name": "HESHAN OFC",
+  "description": "All-in-One HD Video & 320kbps MP3 Music Downloader",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07080d",
+  "theme_color": "#07080d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
