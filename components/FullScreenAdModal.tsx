@@ -29,7 +29,6 @@ export default function FullScreenAdModal({
       })
     }, 1000)
 
-    // Inject Ad Network banner script if configured
     if (AD_SCRIPT_SRC && slotRef.current) {
       slotRef.current.innerHTML = ''
       const s = document.createElement('script')
@@ -47,112 +46,101 @@ export default function FullScreenAdModal({
 
   return (
     <div
+      onClick={() => canClose && onClose()}
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 99999,
-        background: 'rgba(2, 6, 23, 0.94)',
-        backdropFilter: 'blur(16px)',
+        zIndex: 2147483647,
+        background: 'rgba(2, 6, 23, 0.92)',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 16,
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
       }}
     >
-      {/* Top Bar with Countdown / Close Button */}
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'absolute',
-          top: 18,
-          left: 18,
-          right: 18,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          maxWidth: 480,
-          margin: '0 auto',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: '#94a3b8',
-            background: 'rgba(255,255,255,0.06)',
-            padding: '6px 12px',
-            borderRadius: 999,
-          }}
-        >
-          Sponsored Ad • Supports Free Server
-        </span>
-
-        <button
-          type="button"
-          disabled={!canClose}
-          onClick={onClose}
-          style={{
-            height: 36,
-            padding: '0 14px',
-            borderRadius: 999,
-            border: canClose ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.08)',
-            background: canClose ? '#ef4444' : 'rgba(30, 41, 59, 0.8)',
-            color: canClose ? '#fff' : '#94a3b8',
-            fontSize: 12.5,
-            fontWeight: 700,
-            cursor: canClose ? 'pointer' : 'not-allowed',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: '0.2s',
-          }}
-        >
-          {canClose ? '✕ Close' : `Skip in ${secondsLeft}s`}
-        </button>
-      </div>
-
-      {/* Main Ad Container */}
-      <div
-        style={{
+          position: 'relative',
           width: '100%',
-          maxWidth: 400,
-          borderRadius: 24,
-          background: 'linear-gradient(160deg, #0f172a, #020617)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          padding: 22,
+          maxWidth: 390,
+          borderRadius: 22,
+          background: '#0b1120',
+          border: '1px solid rgba(255,255,255,0.14)',
+          padding: '16px 20px 22px',
           textAlign: 'center',
-          boxShadow: '0 30px 70px rgba(0,0,0,0.85)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.9)',
         }}
       >
+        {/* Top Row Inside Card — Always Visible & Clickable */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+            paddingBottom: 10,
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              color: '#94a3b8',
+            }}
+          >
+            Sponsored Ad
+          </span>
+
+          <button
+            type="button"
+            disabled={!canClose}
+            onClick={onClose}
+            style={{
+              height: 32,
+              padding: '0 13px',
+              borderRadius: 999,
+              border: 0,
+              background: canClose ? '#ef4444' : 'rgba(255,255,255,0.1)',
+              color: canClose ? '#fff' : '#cbd5e1',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: canClose ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {canClose ? '✕ Close' : `Skip in ${secondsLeft}s`}
+          </button>
+        </div>
+
         {AD_SCRIPT_SRC ? (
           <div id={AD_CONTAINER_ID} ref={slotRef} style={{ minHeight: 250, display: 'grid', placeItems: 'center' }} />
         ) : (
           <div>
             <div
               style={{
-                width: 64,
-                height: 64,
-                margin: '0 auto 14px',
-                borderRadius: 18,
+                width: 58,
+                height: 58,
+                margin: '0 auto 12px',
+                borderRadius: 16,
                 background: 'linear-gradient(135deg, #ef4444, #f59e0b)',
                 display: 'grid',
                 placeItems: 'center',
-                fontSize: 30,
-                boxShadow: '0 12px 30px rgba(239, 68, 68, 0.45)',
+                fontSize: 28,
               }}
             >
               👑
             </div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', letterSpacing: '0.08em', marginBottom: 6 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#fbbf24', letterSpacing: '0.08em', marginBottom: 5 }}>
               HESHAN OFC VIP MEMBERSHIP
             </div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 800, color: '#fff' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: '#fff' }}>
               Tired of Limits &amp; Ads?
             </h3>
-            <p style={{ margin: '0 0 18px', fontSize: 13.5, lineHeight: 1.55, color: '#94a3b8' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.5, color: '#94a3b8' }}>
               Upgrade to <strong style={{ color: '#fff' }}>HESHAN OFC Premium</strong> for Unlimited HD Video &amp; 320kbps Music Downloads with Zero Ads!
             </p>
             <a
@@ -163,14 +151,13 @@ export default function FullScreenAdModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: 44,
-                borderRadius: 13,
+                height: 42,
+                borderRadius: 12,
                 background: 'linear-gradient(135deg, #22c55e, #15803d)',
                 color: '#fff',
                 textDecoration: 'none',
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: 700,
-                boxShadow: '0 10px 24px rgba(34, 197, 94, 0.4)',
               }}
             >
               Unlock VIP via WhatsApp
