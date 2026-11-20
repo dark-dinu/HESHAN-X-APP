@@ -1,3 +1,5 @@
+const CACHE_NAME = 'heshan-ofc-v1'
+
 self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
@@ -7,6 +9,8 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  // Pass-through network requests for fast live media fetching
-  event.respondWith(fetch(event.request))
+  if (event.request.method !== 'GET') return
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  )
 })
