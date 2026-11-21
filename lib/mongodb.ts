@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
 const FALLBACK_URI =
-  'mongodb+srv://diniduheshan40_db_user:Heshan2007@cluster0.5gazebm.mongodb.net/heshan_ofc_db?retryWrites=true&w=majority&appName=Cluster0'
+  'mongodb+srv://diniduheshan2007_db_user:SZD7sfcIU6Einajx@cluster0.ah8jggk.mongodb.net/dark-dinu?retryWrites=true&w=majority&appName=Cluster0'
 
 const envUri = (process.env.MONGODB_URI || '').trim()
 const MONGODB_URI = /^mongodb(\+srv)?:\/\//.test(envUri) ? envUri : FALLBACK_URI
@@ -18,7 +18,6 @@ export async function connectDB() {
   if (!cached.promise) {
     cached.promise = mongoose
       .connect(MONGODB_URI, {
-        dbName: 'heshan_ofc_db',
         bufferCommands: false,
         serverSelectionTimeoutMS: 8000,
       })
