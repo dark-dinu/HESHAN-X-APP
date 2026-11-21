@@ -144,7 +144,7 @@ export default function CommunityChatPage() {
 
         <section className="ch-feed">
           <div className="ch-notice">
-            ⏳ All messages automatically delete from the database after 24 hours.
+            ⏳ All messages automatically delete from the chatbox after 24 hours⏳.
           </div>
 
           {loading ? (
