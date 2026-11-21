@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
+import { connectDB } from '@/lib/mongodb'
 import ChatMessage from '@/models/ChatMessage'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +21,6 @@ async function getSessionUser(req: Request) {
 export async function GET() {
   try {
     await connectDB()
-    // Extra safety filter for messages within last 24h
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const messages = await ChatMessage.find({ createdAt: { $gte: since } })
       .sort({ createdAt: 1 })
@@ -90,7 +89,6 @@ export async function DELETE(req: Request) {
       user.isOwner || String(user.email).toLowerCase() === 'damiyamalinda@gmail.com'
 
     await connectDB()
-    // Owner can delete any message; normal users can delete their own messages
     if (isOwner) {
       await ChatMessage.deleteOne({ _id: id })
     } else {
