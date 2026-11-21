@@ -28,6 +28,8 @@ const CATEGORIES = [
 
 export default function MusicHubPage() {
   const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [activeCategory, setActiveCategory] = useState('Popular Hits')
   const [isDefaultFeed, setIsDefaultFeed] = useState(true)
   const [searching, setSearching] = useState(true)
@@ -39,6 +41,8 @@ export default function MusicHubPage() {
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const searchWrapRef = useRef<HTMLDivElement | null>(null)
+  const skipNextSuggestRef = useRef(false)
 
   const formatTime = (sec: number) => {
     if (!Number.isFinite(sec) || sec < 0) return '0:00'
@@ -67,10 +71,62 @@ export default function MusicHubPage() {
     }
   }
 
-  // Auto-load trending tracks on initial page open so the feed is never empty
+  // Auto-load trending tracks on initial page open
   useEffect(() => {
     fetchTracks(CATEGORIES[0].query, true)
   }, [])
+
+  // Close suggestions dropdown when tapping outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
+
+  // Fetch live YouTube autocomplete suggestions while typing
+  useEffect(() => {
+    if (skipNextSuggestRef.current) {
+      skipNextSuggestRef.current = false
+      return
+    }
+
+    const trimmed = query.trim()
+    const isUrl =
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.includes('youtu') ||
+      trimmed.includes('spotify.com')
+
+    if (trimmed.length < 2 || isUrl) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/suggest?q=${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        const list = Array.isArray(data?.suggestions) ? data.suggestions : []
+        setSuggestions(list)
+        setShowSuggestions(list.length > 0)
+      } catch {
+        // Ignore aborted or failed suggestion requests
+      }
+    }, 240)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [query])
 
   const playTrack = async (track: TrackItem) => {
     setError('')
@@ -114,10 +170,12 @@ export default function MusicHubPage() {
 
   const handleSearch = async (customQuery?: string) => {
     const q = (customQuery ?? query).trim()
+    setShowSuggestions(false)
     if (!q) {
       setError('Enter a song title, artist, or Spotify / YouTube link.')
       return
     }
+    skipNextSuggestRef.current = true
     setQuery(q)
     setError('')
 
@@ -143,6 +201,8 @@ export default function MusicHubPage() {
   const handleCategoryClick = (cat: { label: string; query: string }) => {
     setActiveCategory(cat.label)
     setQuery('')
+    setSuggestions([])
+    setShowSuggestions(false)
     fetchTracks(cat.query, true)
   }
 
@@ -202,31 +262,63 @@ export default function MusicHubPage() {
             }}
             className="mh-search-form"
           >
-            <div className="mh-input-shell">
-              <svg className="mh-search-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search songs, artists, or paste link..."
-                aria-label="Search songs or paste link"
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="mh-clear"
-                  onClick={() => {
-                    setQuery('')
-                    setError('')
-                    fetchTracks(CATEGORIES[0].query, true)
-                    setActiveCategory(CATEGORIES[0].label)
+            <div className="mh-autocomplete-wrap" ref={searchWrapRef}>
+              <div className="mh-input-shell">
+                <svg className="mh-search-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="text"
+                  value={query}
+                  onFocus={() => {
+                    if (suggestions.length > 0) setShowSuggestions(true)
                   }}
-                >
-                  Clear
-                </button>
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search songs, artists, or paste link..."
+                  aria-label="Search songs or paste link"
+                  autoComplete="off"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    className="mh-clear"
+                    onClick={() => {
+                      setQuery('')
+                      setSuggestions([])
+                      setShowSuggestions(false)
+                      setError('')
+                      fetchTracks(CATEGORIES[0].query, true)
+                      setActiveCategory(CATEGORIES[0].label)
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* YouTube-Style Live Autocomplete Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="mh-suggest-drop" role="listbox">
+                  {suggestions.map((item, i) => (
+                    <button
+                      key={`${item}-${i}`}
+                      type="button"
+                      className="mh-suggest-item"
+                      onClick={() => handleSearch(item)}
+                    >
+                      <svg className="mh-suggest-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                      </svg>
+                      <span className="mh-suggest-text">{item}</span>
+                      <svg className="mh-suggest-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7" />
+                        <polyline points="7 7 17 7 17 17" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -441,7 +533,6 @@ export default function MusicHubPage() {
                     className={`mh-yt-card ${isCurrent ? 'active' : ''}`}
                     onClick={() => !isLoadingThis && playTrack(track)}
                   >
-                    {/* Large YouTube-Style Thumbnail Banner */}
                     <div className="mh-yt-media">
                       {track.thumbnail ? (
                         <img src={track.thumbnail} alt={track.title} className="mh-yt-img" loading="lazy" />
@@ -456,16 +547,11 @@ export default function MusicHubPage() {
                       )}
 
                       <div className="mh-yt-shade" />
-
-                      {/* Rank / Top Badge */}
                       <span className="mh-yt-rank">#{idx + 1}</span>
-
-                      {/* Duration Pill */}
                       {track.duration && (
                         <span className="mh-yt-dur">{track.duration}</span>
                       )}
 
-                      {/* Center Play Button */}
                       <button
                         type="button"
                         className={`mh-yt-play ${isCurrent ? 'on' : ''}`}
@@ -487,7 +573,6 @@ export default function MusicHubPage() {
                       </button>
                     </div>
 
-                    {/* Track Title, Artist & Views Info */}
                     <div className="mh-yt-body">
                       <div className="mh-yt-avatar">
                         {track.thumbnail ? (
@@ -545,11 +630,12 @@ const css = `
   -webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .mh-subtitle{margin:0;font-size:13.5px;line-height:1.55;color:#94a3b8}
 
-.mh-search-box{background:linear-gradient(180deg,rgba(17,24,39,.84),rgba(9,13,22,.92));
+.mh-search-box{position:relative;z-index:30;background:linear-gradient(180deg,rgba(17,24,39,.84),rgba(9,13,22,.92));
   border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:15px;
   box-shadow:0 24px 60px -15px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.06) inset;
   backdrop-filter:blur(18px)}
 .mh-search-form{display:flex;flex-direction:column;gap:10px}
+.mh-autocomplete-wrap{position:relative;z-index:40}
 .mh-input-shell{position:relative;display:flex;align-items:center;height:48px;padding:0 8px 0 42px;
   border-radius:15px;background:rgba(3,7,18,.78);border:1px solid rgba(148,163,184,.16);
   transition:border-color .2s,box-shadow .2s}
@@ -562,6 +648,21 @@ const css = `
 .mh-clear{border:0;background:rgba(255,255,255,.08);color:#cbd5e1;padding:6px 11px;border-radius:10px;
   font:600 12px inherit;cursor:pointer;transition:.15s}
 .mh-clear:hover{background:rgba(255,255,255,.15);color:#fff}
+
+/* YouTube Live Autocomplete Dropdown */
+.mh-suggest-drop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:99;
+  border-radius:16px;overflow:hidden;background:rgba(10,15,28,.98);
+  border:1px solid rgba(239,68,68,.38);
+  box-shadow:0 22px 50px rgba(0,0,0,.92);backdrop-filter:blur(20px)}
+.mh-suggest-item{width:100%;display:flex;align-items:center;gap:11px;padding:11px 14px;
+  border:0;border-bottom:1px solid rgba(255,255,255,.05);background:transparent;
+  color:#f1f5f9;font:500 13.5px inherit;text-align:left;cursor:pointer;transition:background .14s}
+.mh-suggest-item:last-child{border-bottom:0}
+.mh-suggest-item:hover,.mh-suggest-item:active{background:rgba(239,68,68,.16);color:#fff}
+.mh-suggest-ico{color:#64748b;flex-shrink:0}
+.mh-suggest-item:hover .mh-suggest-ico{color:#ef4444}
+.mh-suggest-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh-suggest-arrow{color:#475569;flex-shrink:0}
 
 .mh-btn-primary{display:flex;align-items:center;justify-content:center;gap:9px;height:46px;border:0;
   border-radius:15px;cursor:pointer;font:700 14.5px inherit;color:#fff;letter-spacing:.01em;
@@ -631,7 +732,6 @@ const css = `
   font-size:13px;font-weight:700;box-shadow:0 8px 22px -6px rgba(16,185,129,.6);transition:.15s}
 .mh-dl-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
 
-/* YouTube-Style Large Cards Grid */
 .mh-results{margin-top:22px}
 .mh-results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px}
 .mh-results-head h3{margin:0;font-size:15px;font-weight:800;color:#f1f5f9;letter-spacing:-.01em}
@@ -678,7 +778,6 @@ const css = `
 .mh-yt-stats{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11.5px;color:#94a3b8}
 .mh-yt-hq{color:#34d399;font-weight:700}
 
-/* Loading Skeletons */
 .mh-skeleton-grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:520px){.mh-skeleton-grid{grid-template-columns:1fr 1fr}}
 .mh-skel-card{border-radius:20px;padding-bottom:14px;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.05);overflow:hidden}
