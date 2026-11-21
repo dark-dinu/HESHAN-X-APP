@@ -30,8 +30,11 @@ export async function GET() {
       .limit(120)
       .lean()
     return NextResponse.json({ messages })
-  } catch {
-    return NextResponse.json({ error: 'Failed to load chat messages.' }, { status: 500 })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || 'Failed to load chat messages.' },
+      { status: 500 }
+    )
   }
 }
 
@@ -55,23 +58,31 @@ export async function POST(req: Request) {
     const role = isOwner ? 'owner' : user.plan === 'premium' ? 'premium' : 'normal'
 
     await connectDB()
-    const created = await ChatMessage.create({
+
+    const docData: any = {
       userEmail: String(user.email).toLowerCase(),
       userName: String(user.name || 'User'),
       role,
       text: String(text).trim().slice(0, 500),
-      replyTo: replyTo?.id
-        ? {
-            id: String(replyTo.id),
-            userName: String(replyTo.userName || 'User'),
-            text: String(replyTo.text || '').slice(0, 120),
-          }
-        : undefined,
-    })
+    }
+
+    if (replyTo && replyTo.id) {
+      docData.replyTo = {
+        id: String(replyTo.id),
+        userName: String(replyTo.userName || 'User'),
+        text: String(replyTo.text || '').slice(0, 120),
+      }
+    }
+
+    const created = await ChatMessage.create(docData)
 
     return NextResponse.json({ message: created })
-  } catch {
-    return NextResponse.json({ error: 'Could not send message.' }, { status: 500 })
+  } catch (err: any) {
+    console.error('CHAT POST ERROR:', err)
+    return NextResponse.json(
+      { error: err?.message || 'Could not send message.' },
+      { status: 500 }
+    )
   }
 }
 
@@ -102,7 +113,10 @@ export async function DELETE(req: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || 'Delete failed' },
+      { status: 500 }
+    )
   }
 }
