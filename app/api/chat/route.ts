@@ -6,8 +6,11 @@ export const dynamic = 'force-dynamic'
 
 async function getSessionUser(req: Request) {
   try {
-    const origin = new URL(req.url).origin
-    const res = await fetch(`${origin}/api/auth`, {
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host')
+    const proto = req.headers.get('x-forwarded-proto') || 'https'
+    const baseUrl = host ? `${proto}://${host}` : new URL(req.url).origin
+
+    const res = await fetch(`${baseUrl}/api/auth`, {
       headers: { cookie: req.headers.get('cookie') || '' },
       cache: 'no-store',
     })
