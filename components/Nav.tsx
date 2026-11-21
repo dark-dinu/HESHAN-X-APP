@@ -10,29 +10,143 @@ type ExtendedUser = AuthUser & {
   isOwner?: boolean
 }
 
-const NAV_ITEMS = [
+type ModeKey = 'downloader' | 'music' | 'chat'
+
+const NAV_ITEMS: {
+  key: ModeKey
+  href: string
+  label: string
+  desc: string
+  badge: string
+  accent: string
+}[] = [
   {
+    key: 'downloader',
     href: '/',
     label: 'Downloader',
     desc: 'TikTok, YT, FB & IG 4K',
-    icon: '⬇️',
     badge: 'FAST',
+    accent: '#ef4444',
   },
   {
+    key: 'music',
     href: '/music',
     label: 'Music Hub',
     desc: '320kbps HD Stream & MP3',
-    icon: '🎵',
     badge: 'HD',
+    accent: '#38bdf8',
   },
   {
+    key: 'chat',
     href: '/chat',
     label: 'Community Chat',
     desc: '24h Auto-Delete Live Room',
-    icon: '💬',
     badge: '24H',
+    accent: '#10b981',
   },
 ]
+
+function ModeIcon({
+  mode,
+  size = 18,
+  active = false,
+}: {
+  mode: ModeKey
+  size?: number
+  active?: boolean
+}) {
+  if (mode === 'downloader') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={active ? 'heshan-icon-bounce' : ''}
+      >
+        <path d="M12 3v12" />
+        <path d="m7 10 5 5 5-5" />
+        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+      </svg>
+    )
+  }
+
+  if (mode === 'music') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={active ? 'heshan-icon-wave' : ''}
+      >
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={active ? 'heshan-icon-pulse' : ''}
+    >
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      <circle cx="9.5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12.5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function CrownIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      style={{ color: '#facc15', flexShrink: 0 }}
+    >
+      <path d="M2 19h20v2H2v-2zm1.5-11L7 12l5-7 5 7 3.5-4L19 17H5L3.5 8z" />
+    </svg>
+  )
+}
+
+function UserIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c1.8-3.6 5-5 8-5s6.2 1.4 8 5" />
+    </svg>
+  )
+}
 
 export default function Nav() {
   const path = usePathname()
@@ -87,22 +201,98 @@ export default function Nav() {
   return (
     <>
       <style>{`
-        @keyframes navDropIn {
+        @keyframes navMenuSpring {
           0% {
             opacity: 0;
-            transform: translateX(-50%) translateY(-10px) scale(0.95);
+            transform: translateX(-50%) translateY(-14px) scale(0.92);
+            filter: blur(6px);
+          }
+          65% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(2px) scale(1.01);
+            filter: blur(0px);
           }
           100% {
             opacity: 1;
             transform: translateX(-50%) translateY(0) scale(1);
+            filter: blur(0px);
           }
         }
-        .heshan-nav-drop {
-          animation: navDropIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+        @keyframes navItemSlide {
+          0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
+
+        @keyframes userDropSpring {
+          0% {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.94);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes iconFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(2px); }
+        }
+
+        @keyframes iconPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.12); }
+        }
+
+        .heshan-nav-drop {
+          animation: navMenuSpring 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          transform-origin: top center;
+        }
+
+        .heshan-nav-item-anim {
+          opacity: 0;
+          animation: navItemSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .heshan-user-drop {
+          animation: userDropSpring 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          transform-origin: top right;
+        }
+
+        .heshan-icon-bounce {
+          animation: iconFloat 1.8s ease-in-out infinite;
+        }
+
+        .heshan-icon-wave,
+        .heshan-icon-pulse {
+          animation: iconPulse 2.2s ease-in-out infinite;
+        }
+
+        .heshan-mode-btn:active {
+          transform: scale(0.96);
+        }
+
+        .heshan-nav-opt {
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                      background 0.2s ease,
+                      border-color 0.2s ease,
+                      box-shadow 0.2s ease !important;
+        }
+
         .heshan-nav-opt:hover {
-          background: rgba(239, 68, 68, 0.14) !important;
-          border-color: rgba(239, 68, 68, 0.35) !important;
+          transform: translateX(3px);
+          background: rgba(255, 255, 255, 0.06) !important;
+        }
+
+        .heshan-nav-opt:active {
+          transform: scale(0.98);
         }
       `}</style>
 
@@ -132,34 +322,45 @@ export default function Nav() {
           HESHAN <b>OFC</b>
         </Link>
 
-        {/* Animated Center Mode Dropdown */}
+        {/* Premium Animated Vector Mode Selector */}
         <div ref={navDropRef} style={{ position: 'relative', flexShrink: 0 }}>
           <button
             type="button"
+            className="heshan-mode-btn"
             onClick={() => setNavDropOpen((v) => !v)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 7,
               padding: '6px 13px',
               borderRadius: 999,
               border: navDropOpen
-                ? '1px solid rgba(239, 68, 68, 0.7)'
-                : '1px solid rgba(239, 68, 68, 0.38)',
+                ? '1px solid rgba(239, 68, 68, 0.8)'
+                : '1px solid rgba(239, 68, 68, 0.42)',
               background:
-                'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(15, 23, 42, 0.9))',
+                'linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(15, 23, 42, 0.94))',
               color: '#fff',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: navDropOpen
-                ? '0 0 0 3px rgba(239, 68, 68, 0.18), 0 8px 20px rgba(0,0,0,0.5)'
-                : '0 4px 14px rgba(239, 68, 68, 0.2)',
-              transition: 'all 0.2s ease',
+                ? '0 0 0 3px rgba(239, 68, 68, 0.2), 0 10px 24px rgba(0, 0, 0, 0.6)'
+                : '0 4px 16px rgba(239, 68, 68, 0.22)',
+              transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
               whiteSpace: 'nowrap',
             }}
           >
-            <span style={{ fontSize: 13 }}>{currentItem.icon}</span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#f87171',
+                filter: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.65))',
+              }}
+            >
+              <ModeIcon mode={currentItem.key} size={15} active />
+            </span>
             <span>{currentItem.label}</span>
             <svg
               width="12"
@@ -172,8 +373,8 @@ export default function Nav() {
               strokeLinejoin="round"
               style={{
                 transform: navDropOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                color: '#f87171',
+                transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+                color: '#fca5a5',
               }}
             >
               <polyline points="6 9 12 15 18 9" />
@@ -187,33 +388,47 @@ export default function Nav() {
                 position: 'absolute',
                 left: '50%',
                 top: 'calc(100% + 10px)',
-                width: 245,
-                background: 'rgba(10, 15, 28, 0.98)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                borderRadius: 18,
-                padding: 8,
-                boxShadow: '0 22px 50px rgba(0, 0, 0, 0.88)',
-                backdropFilter: 'blur(20px)',
+                width: 262,
+                background:
+                  'linear-gradient(180deg, rgba(13, 18, 34, 0.98), rgba(7, 10, 20, 0.99))',
+                border: '1px solid rgba(239, 68, 68, 0.38)',
+                borderRadius: 20,
+                padding: 9,
+                boxShadow:
+                  '0 24px 60px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255,255,255,0.04) inset',
+                backdropFilter: 'blur(24px)',
                 zIndex: 999,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 5,
+                gap: 6,
               }}
             >
               <div
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   fontSize: 10,
                   fontWeight: 800,
-                  letterSpacing: '0.08em',
+                  letterSpacing: '0.09em',
                   color: '#64748b',
-                  padding: '3px 8px 2px',
+                  padding: '3px 9px 2px',
                   textTransform: 'uppercase',
                 }}
               >
-                Select Mode
+                <span>Select Mode</span>
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    boxShadow: '0 0 8px #ef4444',
+                  }}
+                />
               </div>
 
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.map((item, index) => {
                 const active =
                   item.href === '/' ? path === '/' : path.startsWith(item.href)
                 return (
@@ -221,38 +436,47 @@ export default function Nav() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setNavDropOpen(false)}
-                    className="heshan-nav-opt"
+                    className="heshan-nav-opt heshan-nav-item-anim"
                     style={{
+                      animationDelay: `${index * 55}ms`,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 10,
-                      padding: '9px 10px',
-                      borderRadius: 12,
+                      gap: 11,
+                      padding: '10px 11px',
+                      borderRadius: 14,
                       textDecoration: 'none',
                       background: active
-                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.24), rgba(220, 38, 38, 0.1))'
-                        : 'rgba(255, 255, 255, 0.03)',
+                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.24), rgba(153, 27, 27, 0.14))'
+                        : 'rgba(255, 255, 255, 0.025)',
                       border: active
-                        ? '1px solid rgba(239, 68, 68, 0.5)'
-                        : '1px solid rgba(255, 255, 255, 0.05)',
-                      transition: 'all 0.18s ease',
+                        ? '1px solid rgba(239, 68, 68, 0.55)'
+                        : '1px solid rgba(255, 255, 255, 0.06)',
+                      boxShadow: active
+                        ? '0 8px 20px rgba(239, 68, 68, 0.16)'
+                        : 'none',
                     }}
                   >
                     <div
                       style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 10,
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
                         background: active
-                          ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                          ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
                           : 'rgba(255, 255, 255, 0.06)',
+                        border: active
+                          ? '1px solid rgba(255, 255, 255, 0.22)'
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: active ? '#ffffff' : item.accent,
+                        boxShadow: active
+                          ? '0 0 16px rgba(239, 68, 68, 0.5)'
+                          : 'none',
                         display: 'grid',
                         placeItems: 'center',
-                        fontSize: 15,
                         flexShrink: 0,
                       }}
                     >
-                      {item.icon}
+                      <ModeIcon mode={item.key} size={18} active={active} />
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -266,7 +490,7 @@ export default function Nav() {
                       >
                         <span
                           style={{
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: 700,
                             color: '#fff',
                           }}
@@ -277,14 +501,21 @@ export default function Nav() {
                           style={{
                             fontSize: 9,
                             fontWeight: 800,
-                            padding: '2px 5px',
+                            padding: '2px 6px',
                             borderRadius: 6,
+                            letterSpacing: '0.04em',
                             background:
                               item.badge === '24H'
                                 ? 'rgba(16, 185, 129, 0.18)'
-                                : 'rgba(239, 68, 68, 0.18)',
+                                : item.badge === 'HD'
+                                ? 'rgba(56, 189, 248, 0.18)'
+                                : 'rgba(239, 68, 68, 0.2)',
                             color:
-                              item.badge === '24H' ? '#34d399' : '#f87171',
+                              item.badge === '24H'
+                                ? '#34d399'
+                                : item.badge === 'HD'
+                                ? '#38bdf8'
+                                : '#f87171',
                           }}
                         >
                           {item.badge}
@@ -294,7 +525,7 @@ export default function Nav() {
                         style={{
                           fontSize: 10.5,
                           color: '#94a3b8',
-                          marginTop: 1,
+                          marginTop: 2,
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -323,36 +554,49 @@ export default function Nav() {
                   ? 'rgba(250, 204, 21, 0.14)'
                   : 'rgba(255, 255, 255, 0.07)',
                 border: isOwner
-                  ? '1px solid rgba(250, 204, 21, 0.4)'
+                  ? '1px solid rgba(250, 204, 21, 0.42)'
                   : '1px solid rgba(255, 255, 255, 0.14)',
                 color: '#f8fafc',
-                padding: '4px 9px',
+                padding: '5px 10px',
                 borderRadius: 999,
                 fontSize: 11.5,
-                fontWeight: 600,
+                fontWeight: 700,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
               }}
             >
-              <span style={{ fontSize: 11 }}>
-                {isOwner ? '👑' : isPremium ? '⭐' : '👤'}
-              </span>
+              {isOwner ? <CrownIcon size={13} /> : <UserIcon size={13} />}
               <span>{user.name.split(' ')[0]}</span>
-              <span style={{ fontSize: 9, opacity: 0.7 }}>▼</span>
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                style={{
+                  opacity: 0.75,
+                  transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </button>
 
             {menuOpen && (
               <div
+                className="heshan-user-drop"
                 style={{
                   position: 'absolute',
                   right: 0,
                   top: 'calc(100% + 8px)',
-                  minWidth: 205,
+                  minWidth: 210,
                   background: '#0f172a',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: 14,
+                  borderRadius: 16,
                   padding: 10,
-                  boxShadow: '0 14px 35px rgba(0,0,0,0.65)',
+                  boxShadow: '0 16px 40px rgba(0,0,0,0.75)',
                   zIndex: 999,
                 }}
               >
@@ -418,19 +662,22 @@ export default function Nav() {
                     }}
                     style={{
                       width: '100%',
-                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
                       background: 'rgba(250, 204, 21, 0.14)',
                       border: '1px solid rgba(250, 204, 21, 0.3)',
                       color: '#facc15',
-                      padding: '7px 10px',
-                      borderRadius: 8,
+                      padding: '8px 10px',
+                      borderRadius: 10,
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: 'pointer',
                       marginBottom: 6,
                     }}
                   >
-                    👑 Owner Admin Panel
+                    <CrownIcon size={14} />
+                    <span>Owner Admin Panel</span>
                   </button>
                 )}
 
@@ -442,8 +689,8 @@ export default function Nav() {
                     background: 'rgba(239, 68, 68, 0.12)',
                     border: 'none',
                     color: '#fca5a5',
-                    padding: '7px 10px',
-                    borderRadius: 8,
+                    padding: '8px 10px',
+                    borderRadius: 10,
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
