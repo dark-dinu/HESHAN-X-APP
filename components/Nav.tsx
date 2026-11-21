@@ -10,7 +10,7 @@ type ExtendedUser = AuthUser & {
   isOwner?: boolean
 }
 
-type ModeKey = 'downloader' | 'music' | 'chat'
+type ModeKey = 'downloader' | 'music' | 'movies' | 'chat'
 
 const NAV_ITEMS: {
   key: ModeKey
@@ -35,6 +35,14 @@ const NAV_ITEMS: {
     desc: '320kbps HD Stream & MP3',
     badge: 'HD',
     accent: '#38bdf8',
+  },
+  {
+    key: 'movies',
+    href: '/movies',
+    label: 'Movies & TV',
+    desc: 'Sinhala Sub Movies & Series',
+    badge: 'SUB',
+    accent: '#f59e0b',
   },
   {
     key: 'chat',
@@ -91,6 +99,25 @@ function ModeIcon({
         <path d="M9 18V5l12-2v13" />
         <circle cx="6" cy="18" r="3" />
         <circle cx="18" cy="16" r="3" />
+      </svg>
+    )
+  }
+
+  if (mode === 'movies') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={active ? 'heshan-icon-pulse' : ''}
+      >
+        <rect x="2" y="3" width="20" height="18" rx="3" />
+        <path d="M7 3v18M17 3v18M2 9h5M2 15h5M17 9h5M17 15h5" />
       </svg>
     )
   }
@@ -388,7 +415,7 @@ export default function Nav() {
                 position: 'absolute',
                 left: '50%',
                 top: 'calc(100% + 10px)',
-                width: 262,
+                width: 266,
                 background:
                   'linear-gradient(180deg, rgba(13, 18, 34, 0.98), rgba(7, 10, 20, 0.99))',
                 border: '1px solid rgba(239, 68, 68, 0.38)',
@@ -438,7 +465,7 @@ export default function Nav() {
                     onClick={() => setNavDropOpen(false)}
                     className="heshan-nav-opt heshan-nav-item-anim"
                     style={{
-                      animationDelay: `${index * 55}ms`,
+                      animationDelay: `${index * 50}ms`,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 11,
@@ -509,12 +536,16 @@ export default function Nav() {
                                 ? 'rgba(16, 185, 129, 0.18)'
                                 : item.badge === 'HD'
                                 ? 'rgba(56, 189, 248, 0.18)'
+                                : item.badge === 'SUB'
+                                ? 'rgba(245, 158, 11, 0.18)'
                                 : 'rgba(239, 68, 68, 0.2)',
                             color:
                               item.badge === '24H'
                                 ? '#34d399'
                                 : item.badge === 'HD'
                                 ? '#38bdf8'
+                                : item.badge === 'SUB'
+                                ? '#fbbf24'
                                 : '#f87171',
                           }}
                         >
