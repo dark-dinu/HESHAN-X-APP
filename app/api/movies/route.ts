@@ -38,15 +38,31 @@ export async function GET(req: Request) {
     }
 
     const res = await fetch(endpoint, {
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'User-Agent':
+          'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+      },
       cache: 'no-store',
     })
 
-    const data = await res.json().catch(() => null)
+    const rawText = await res.text()
+    let data: any = null
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      data = null
+    }
 
     if (!res.ok || !data) {
       return NextResponse.json(
-        { error: data?.message || 'Failed to fetch from SinhalaSub API.' },
+        {
+          error:
+            data?.message ||
+            data?.error ||
+            `API HTTP ${res.status}: ${rawText.slice(0, 120)}`,
+          fallbackUrl: endpoint,
+        },
         { status: res.status || 502 }
       )
     }
