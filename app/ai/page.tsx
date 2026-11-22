@@ -24,6 +24,16 @@ const QUICK_PROMPTS = [
   'YouTube video description template',
 ]
 
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
 export default function AiStudioPage() {
   const [tab, setTab] = useState<AiTab>('chat')
   const [model, setModel] = useState<AiModel>('chatgpt')
@@ -70,37 +80,41 @@ export default function AiStudioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'chat', model, prompt }),
       })
-      const json = await res.json()
+      const json = await res.json().catch(() => null)
 
-      if (!res.ok || !json?.ok) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            role: 'assistant',
-            model,
-            text: `⚠️ ${json?.error || 'Could not get HESHAN OFC AI response.'}`,
-          },
-        ])
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `ai-${Date.now()}`,
-            role: 'assistant',
-            model,
-            text: json.reply,
-          },
-        ])
+      let replyText = json?.reply || ''
+
+      // Client-side direct fallback if server returned empty
+      if (!replyText) {
+        const sys =
+          'You are HESHAN OFC AI created by Dinidu Heshan (දිනිදු හේෂාන්). Never mention any other AI brand. Reply in the same language.'
+        const directRes = await fetch(
+          `https://text.pollinations.ai/${encodeURIComponent(prompt)}?system=${encodeURIComponent(sys)}&seed=${Date.now()}`
+        )
+        if (directRes.ok) {
+          replyText = await directRes.text()
+        }
       }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          model,
+          text:
+            replyText.trim() ||
+            'මම HESHAN OFC AI — ඔබට උදව් කරන්න සූදානම්! කරුණාකර නැවත පණිවිඩය යොමු කරන්න.',
+        },
+      ])
     } catch {
       setMessages((prev) => [
         ...prev,
         {
-          id: `err-${Date.now()}`,
+          id: `ai-${Date.now()}`,
           role: 'assistant',
           model,
-          text: '⚠️ Network error. Please check your connection and try again.',
+          text: 'Connection එක පරීක්ෂා කර නැවත උත්සාහ කරන්න.',
         },
       ])
     } finally {
@@ -223,7 +237,7 @@ export default function AiStudioPage() {
                         </button>
                       </div>
                     )}
-                    <div className="ai-text">{m.text}</div>
+                    <div className="ai-text">{renderFormattedText(m.text)}</div>
                   </div>
                 ))}
 
