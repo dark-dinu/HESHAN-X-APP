@@ -23,6 +23,48 @@ function stripTags(html: string) {
     .trim()
 }
 
+function formatSlugTitle(url: string) {
+  const slug = url.split('/').filter(Boolean).pop() || 'Untitled'
+  return slug
+    .replace(/-sinhala-subtitles?$/i, '')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function normalizeImageUrl(raw?: string) {
+  if (!raw) return ''
+  let clean = raw.trim().split(/\s+/)[0].replace(/&amp;/g, '&')
+  if (!clean || clean.startsWith('data:')) return ''
+  if (clean.startsWith('//')) clean = `https:${clean}`
+  else if (clean.startsWith('/')) clean = `${SITE}${clean}`
+  // Upgrade small WordPress thumbnail sizes (-150x225, -300x450) to higher quality if possible
+  clean = clean.replace(/-\d+x\d+(?=\.(?:jpg|jpeg|png|webp))/i, '')
+  return clean
+}
+
+function extractImageFromHtml(fragment: string) {
+  const patterns = [
+    /data-lazy-src=["']([^"']+)["']/i,
+    /data-src=["']([^"']+)["']/i,
+    /data-original=["']([^"']+)["']/i,
+    /data-srcset=["']([^"']+)["']/i,
+    /srcset=["']([^"']+)["']/i,
+    /<img[^>]+src=["']([^"']+)["']/i,
+    /url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i,
+  ]
+
+  for (const re of patterns) {
+    const m = fragment.match(re)
+    if (m?.[1]) {
+      const url = normalizeImageUrl(m[1])
+      if (url && !url.includes('placeholder') && !url.includes('avatar')) {
+        return url
+      }
+    }
+  }
+  return ''
+}
+
 async function fetchHtml(url: string) {
   const target = url.startsWith('http') ? url : `${SITE}${url.startsWith('/') ? '' : '/'}${url}`
   const res = await fetch(target, { headers: HEADERS, cache: 'no-store' })
@@ -40,8 +82,8 @@ function parseSearchResults(html: string, type: 'movie' | 'tv') {
   }[] = []
   const seen = new Set<string>()
 
-  // Match result items / article cards
-  const blocks = html.match(/<(article|div)[^>]*class="[^"]*(?:result-item|item)[^"]*"[\s\S]*?<\/\1>/gi) || []
+  const blocks =
+    html.match(/<(article|div)[^>]*class="[^"]*(?:result-item|item)[^"]*"[\s\S]*?<\/\1>/gi) || []
 
   for (const block of blocks) {
     const hrefMatch = block.match(/href="(https?:\/\/sinhalasub\.lk\/(?:movies|tvshows)\/[^"]+)"/i)
@@ -53,26 +95,25 @@ function parseSearchResults(html: string, type: 'movie' | 'tv') {
     if (seen.has(url)) continue
     seen.add(url)
 
-    const imgMatch =
-      block.match(/data-src="([^"]+)"/i) ||
-      block.match(/src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/i)
+    const image = extractImageFromHtml(block)
     const titleMatch =
-      block.match(/alt="([^"]+)"/i) ||
       block.match(/<div class="title"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i) ||
-      block.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)
-    const yearMatch = block.match(/class="year"[^>]*>([^<]+)</i) || block.match(/\b(19\d{2}|20\d{2})\b/)
+      block.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i) ||
+      block.match(/alt="([^"]+)"/i)
+    const yearMatch =
+      block.match(/class="year"[^>]*>([^<]+)</i) || block.match(/\b(19\d{2}|20\d{2})\b/)
     const rateMatch = block.match(/class="rating"[^>]*>([^<]+)</i)
 
+    const rawTitle = stripTags(titleMatch?.[1] || '')
     results.push({
-      title: stripTags(titleMatch?.[1] || url.split('/').filter(Boolean).pop() || 'Untitled'),
+      title: rawTitle && rawTitle.length > 1 ? rawTitle : formatSlugTitle(url),
       url,
-      image: imgMatch?.[1] || '',
+      image,
       year: stripTags(yearMatch?.[1] || ''),
       rating: stripTags(rateMatch?.[1] || ''),
     })
   }
 
-  // Fallback anchor scan if theme layout differs
   if (results.length === 0) {
     const pattern =
       type === 'movie'
@@ -83,14 +124,15 @@ function parseSearchResults(html: string, type: 'movie' | 'tv') {
     while ((m = pattern.exec(html)) !== null) {
       const url = m[1]
       if (seen.has(url)) continue
-      const text = stripTags(m[2])
-      if (!text || text.length < 2) continue
+      const inner = m[2]
+      const image = extractImageFromHtml(inner)
+      const text = stripTags(inner)
       seen.add(url)
       results.push({
-        title: text,
+        title: text && text.length > 2 ? text : formatSlugTitle(url),
         url,
-        image: '',
-        year: '',
+        image,
+        year: (url.match(/\b(19\d{2}|20\d{2})\b/) || [])[1] || '',
         rating: '',
       })
     }
@@ -103,7 +145,6 @@ function parseDownloadLinks(html: string) {
   const downloads: { quality: string; size: string; url: string; server: string }[] = []
   const seen = new Set<string>()
 
-  // 1. Parse DooPlay / SinhalaSub download table rows
   const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || []
   for (const row of rows) {
     const linkMatch = row.match(/href="(https?:\/\/[^"]+)"/i)
@@ -128,7 +169,6 @@ function parseDownloadLinks(html: string) {
     }
   }
 
-  // 2. Fallback: direct /links/ or download buttons
   if (downloads.length === 0) {
     const linkMatches = html.matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)
     for (const m of linkMatches) {
@@ -157,9 +197,10 @@ function parseMetaAndSeasons(html: string) {
   const titleMatch =
     html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) ||
     html.match(/property="og:title"[^>]+content="([^"]+)"/i)
-  const imgMatch =
-    html.match(/property="og:image"[^>]+content="([^"]+)"/i) ||
-    html.match(/class="poster"[\s\S]*?src="([^"]+)"/i)
+  const ogImg = html.match(/property="og:image"[^>]+content="([^"]+)"/i)?.[1]
+  const posterBlock = html.match(/class="poster"[\s\S]*?<\/div>/i)?.[0] || ''
+  const image = normalizeImageUrl(ogImg) || extractImageFromHtml(posterBlock)
+
   const descMatch =
     html.match(/property="og:description"[^>]+content="([^"]+)"/i) ||
     html.match(/<div class="wp-content"[^>]*>([\s\S]*?)<\/div>/i)
@@ -178,14 +219,8 @@ function parseMetaAndSeasons(html: string) {
     if (seen.has(url)) continue
     seen.add(url)
     const rawTitle = stripTags(m[2])
-    const slugTitle = url
-      .split('/')
-      .filter(Boolean)
-      .pop()
-      ?.replace(/-/g, ' ')
-      .toUpperCase()
     episodes.push({
-      title: rawTitle && rawTitle.length > 2 ? rawTitle : slugTitle || `Episode ${idx}`,
+      title: rawTitle && rawTitle.length > 2 ? rawTitle : formatSlugTitle(url),
       epNumber: String(idx++),
       url,
     })
@@ -193,7 +228,7 @@ function parseMetaAndSeasons(html: string) {
 
   return {
     title: stripTags(titleMatch?.[1] || ''),
-    image: imgMatch?.[1] || '',
+    image,
     description: stripTags(descMatch?.[1] || '').slice(0, 320),
     rating: stripTags(rateMatch?.[1] || ''),
     year: stripTags(yearMatch?.[1] || ''),
@@ -205,8 +240,32 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const action = searchParams.get('action') || 'search'
-    const q = (searchParams.get('q') || '').trim()
 
+    // Image proxy to bypass hotlink restrictions
+    if (action === 'img') {
+      const imgUrl = searchParams.get('url') || ''
+      if (!imgUrl.startsWith('http')) {
+        return new NextResponse('Invalid image URL', { status: 400 })
+      }
+      const imgRes = await fetch(imgUrl, {
+        headers: {
+          'User-Agent': HEADERS['User-Agent'],
+          Referer: 'https://sinhalasub.lk/',
+        },
+      })
+      if (!imgRes.ok) {
+        return new NextResponse('Image fetch failed', { status: 502 })
+      }
+      const buf = await imgRes.arrayBuffer()
+      return new NextResponse(buf, {
+        headers: {
+          'Content-Type': imgRes.headers.get('content-type') || 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      })
+    }
+
+    const q = (searchParams.get('q') || '').trim()
     if (!q) {
       return NextResponse.json({ error: 'Search query or URL required.' }, { status: 400 })
     }
