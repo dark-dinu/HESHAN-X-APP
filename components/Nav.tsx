@@ -60,6 +60,14 @@ const NAV_ITEMS: {
     badge: '24H',
     accent: '#10b981',
   },
+    {
+    key: 'ai',
+    href: '/ai',
+    label: 'HESHAN AI',
+    desc: 'Smart Chat & HD Photo Enhancer',
+    badge: 'AI',
+    accent: '#38bdf8',
+  },
 ]
 
 function ModeIcon({
