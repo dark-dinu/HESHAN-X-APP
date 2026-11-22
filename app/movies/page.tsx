@@ -41,6 +41,28 @@ type DetailData = {
   seasons: SeasonGroup[]
 }
 
+async function fetchMovieApi(action: string, q: string) {
+  const res = await fetch(
+    `/api/movies?action=${encodeURIComponent(action)}&q=${encodeURIComponent(q)}`,
+    { cache: 'no-store' }
+  )
+  const json = await res.json().catch(() => ({}))
+
+  if (res.ok && json?.ok) {
+    return json.data
+  }
+
+  // Fallback: fetch directly from browser if server IP is blocked
+  if (json?.fallbackUrl) {
+    const directRes = await fetch(json.fallbackUrl)
+    if (directRes.ok) {
+      return await directRes.json()
+    }
+  }
+
+  throw new Error(json?.error || 'Failed to fetch from SinhalaSub API.')
+}
+
 function extractResults(raw: any): SearchItem[] {
   const payload = raw?.result || raw?.results || raw?.data || raw
   const list = Array.isArray(payload)
@@ -161,21 +183,15 @@ export default function MoviesHubPage() {
 
     try {
       const action = activeTab === 'movie' ? 'search' : 'tv-search'
-      const res = await fetch(`/api/movies?action=${action}&q=${encodeURIComponent(q)}`)
-      const json = await res.json()
-
-      if (!res.ok || !json.ok) {
-        setError(json.error || 'No results found.')
-        setResults([])
-      } else {
-        const parsed = extractResults(json.data)
-        setResults(parsed)
-        if (parsed.length === 0) {
-          setError('No matching titles found. Try another keyword.')
-        }
+      const raw = await fetchMovieApi(action, q)
+      const parsed = extractResults(raw)
+      setResults(parsed)
+      if (parsed.length === 0) {
+        setError('No matching titles found. Try another keyword.')
       }
-    } catch {
-      setError('Network error while searching.')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch from SinhalaSub API.')
+      setResults([])
     } finally {
       setLoading(false)
     }
@@ -191,16 +207,10 @@ export default function MoviesHubPage() {
 
     try {
       const action = tab === 'movie' ? 'infodl' : 'tv-info'
-      const res = await fetch(`/api/movies?action=${action}&q=${encodeURIComponent(item.url)}`)
-      const json = await res.json()
-
-      if (!res.ok || !json.ok) {
-        setError(json.error || 'Could not load details.')
-      } else {
-        setDetails(extractDetails(json.data, item))
-      }
-    } catch {
-      setError('Failed to fetch download info.')
+      const raw = await fetchMovieApi(action, item.url)
+      setDetails(extractDetails(raw, item))
+    } catch (err: any) {
+      setError(err?.message || 'Could not load details.')
     } finally {
       setDetailLoading(false)
     }
@@ -212,11 +222,8 @@ export default function MoviesHubPage() {
     setEpLoading(true)
 
     try {
-      const res = await fetch(`/api/movies?action=tv-dl&q=${encodeURIComponent(ep.url)}`)
-      const json = await res.json()
-      if (res.ok && json.ok) {
-        setEpLinks(extractLinks(json.data))
-      }
+      const raw = await fetchMovieApi('tv-dl', ep.url)
+      setEpLinks(extractLinks(raw))
     } catch {}
     finally {
       setEpLoading(false)
@@ -236,7 +243,6 @@ export default function MoviesHubPage() {
       <style>{css}</style>
 
       <div className="mv-wrap">
-        {/* Hero Header */}
         <header className="mv-hero">
           <div className="mv-pill">
             <span className="mv-dot" />
@@ -250,7 +256,6 @@ export default function MoviesHubPage() {
           </p>
         </header>
 
-        {/* Smooth Movie / TV Switcher */}
         <div className="mv-tabs">
           <button
             type="button"
@@ -277,7 +282,6 @@ export default function MoviesHubPage() {
           </button>
         </div>
 
-        {/* Search Bar */}
         <form onSubmit={(e) => handleSearch(e)} className="mv-search">
           <input
             type="text"
@@ -304,7 +308,6 @@ export default function MoviesHubPage() {
           </button>
         </form>
 
-        {/* Quick Trending Chips */}
         {!selectedItem && results.length === 0 && !loading && (
           <div className="mv-chips">
             {(tab === 'movie'
@@ -328,7 +331,6 @@ export default function MoviesHubPage() {
 
         {error && <div className="mv-err">{error}</div>}
 
-        {/* Loading Shimmer Grid */}
         {loading && (
           <div className="mv-grid">
             {[1, 2, 3, 4].map((n) => (
@@ -337,7 +339,6 @@ export default function MoviesHubPage() {
           </div>
         )}
 
-        {/* Selected Movie / TV Detail View */}
         {selectedItem && (
           <section className="mv-detail">
             <button
@@ -370,7 +371,6 @@ export default function MoviesHubPage() {
                   </div>
                 </div>
 
-                {/* Movie Direct Download Buttons */}
                 {details.downloads.length > 0 && (
                   <div className="mv-dl-box">
                     <h3>Direct Download Links</h3>
@@ -397,7 +397,6 @@ export default function MoviesHubPage() {
                   </div>
                 )}
 
-                {/* TV Series Seasons & Episodes */}
                 {details.seasons.length > 0 && (
                   <div className="mv-seasons">
                     {details.seasons.map((s, sIdx) => (
@@ -455,7 +454,6 @@ export default function MoviesHubPage() {
           </section>
         )}
 
-        {/* Search Results Poster Grid */}
         {!selectedItem && !loading && results.length > 0 && (
           <section className="mv-grid">
             {results.map((item, idx) => (
