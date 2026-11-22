@@ -10,7 +10,7 @@ type ExtendedUser = AuthUser & {
   isOwner?: boolean
 }
 
-type ModeKey = 'downloader' | 'music' | 'movies' | 'images' | 'chat'
+type ModeKey = 'downloader' | 'music' | 'movies' | 'images' | 'ai' | 'chat'
 
 const NAV_ITEMS: {
   key: ModeKey
@@ -53,20 +53,20 @@ const NAV_ITEMS: {
     accent: '#a855f7',
   },
   {
-    key: 'chat',
-    href: '/chat',
-    label: 'Community Chat',
-    desc: '24h Auto-Delete Live Room',
-    badge: '24H',
-    accent: '#10b981',
-  },
-    {
     key: 'ai',
     href: '/ai',
     label: 'HESHAN AI',
     desc: 'Smart Chat & HD Photo Enhancer',
     badge: 'AI',
     accent: '#38bdf8',
+  },
+  {
+    key: 'chat',
+    href: '/chat',
+    label: 'Community Chat',
+    desc: '24h Auto-Delete Live Room',
+    badge: '24H',
+    accent: '#10b981',
   },
 ]
 
@@ -154,6 +154,24 @@ function ModeIcon({
         <rect x="3" y="3" width="18" height="18" rx="3" />
         <circle cx="8.5" cy="8.5" r="1.5" />
         <path d="m21 15-5-5L5 21" />
+      </svg>
+    )
+  }
+
+  if (mode === 'ai') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={active ? 'heshan-icon-pulse' : ''}
+      >
+        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
       </svg>
     )
   }
@@ -463,7 +481,7 @@ export default function Nav() {
                 zIndex: 999,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 6,
+                gap: 5,
               }}
             >
               <div
@@ -501,11 +519,11 @@ export default function Nav() {
                     onClick={() => setNavDropOpen(false)}
                     className="heshan-nav-opt heshan-nav-item-anim"
                     style={{
-                      animationDelay: `${index * 45}ms`,
+                      animationDelay: `${index * 40}ms`,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 11,
-                      padding: '9px 11px',
+                      padding: '8px 11px',
                       borderRadius: 14,
                       textDecoration: 'none',
                       background: active
@@ -521,8 +539,8 @@ export default function Nav() {
                   >
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
+                        width: 35,
+                        height: 35,
                         borderRadius: 11,
                         background: active
                           ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
@@ -570,7 +588,7 @@ export default function Nav() {
                             background:
                               item.badge === '24H'
                                 ? 'rgba(16, 185, 129, 0.18)'
-                                : item.badge === 'HD'
+                                : item.badge === 'HD' || item.badge === 'AI'
                                 ? 'rgba(56, 189, 248, 0.18)'
                                 : item.badge === 'SUB'
                                 ? 'rgba(245, 158, 11, 0.18)'
@@ -580,7 +598,7 @@ export default function Nav() {
                             color:
                               item.badge === '24H'
                                 ? '#34d399'
-                                : item.badge === 'HD'
+                                : item.badge === 'HD' || item.badge === 'AI'
                                 ? '#38bdf8'
                                 : item.badge === 'SUB'
                                 ? '#fbbf24'
