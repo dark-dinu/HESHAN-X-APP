@@ -10,7 +10,7 @@ type ExtendedUser = AuthUser & {
   isOwner?: boolean
 }
 
-type ModeKey = 'downloader' | 'music' | 'movies' | 'chat'
+type ModeKey = 'downloader' | 'music' | 'movies' | 'images' | 'chat'
 
 const NAV_ITEMS: {
   key: ModeKey
@@ -43,6 +43,14 @@ const NAV_ITEMS: {
     desc: 'Sinhala Sub Movies & Series',
     badge: 'SUB',
     accent: '#f59e0b',
+  },
+  {
+    key: 'images',
+    href: '/images',
+    label: 'Image Search',
+    desc: '4K Wallpapers & HD Photos',
+    badge: '4K',
+    accent: '#a855f7',
   },
   {
     key: 'chat',
@@ -118,6 +126,26 @@ function ModeIcon({
       >
         <rect x="2" y="3" width="20" height="18" rx="3" />
         <path d="M7 3v18M17 3v18M2 9h5M2 15h5M17 9h5M17 15h5" />
+      </svg>
+    )
+  }
+
+  if (mode === 'images') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={active ? 'heshan-icon-pulse' : ''}
+      >
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="m21 15-5-5L5 21" />
       </svg>
     )
   }
@@ -465,11 +493,11 @@ export default function Nav() {
                     onClick={() => setNavDropOpen(false)}
                     className="heshan-nav-opt heshan-nav-item-anim"
                     style={{
-                      animationDelay: `${index * 50}ms`,
+                      animationDelay: `${index * 45}ms`,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 11,
-                      padding: '10px 11px',
+                      padding: '9px 11px',
                       borderRadius: 14,
                       textDecoration: 'none',
                       background: active
@@ -485,9 +513,9 @@ export default function Nav() {
                   >
                     <div
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 12,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 11,
                         background: active
                           ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
                           : 'rgba(255, 255, 255, 0.06)',
@@ -503,7 +531,7 @@ export default function Nav() {
                         flexShrink: 0,
                       }}
                     >
-                      <ModeIcon mode={item.key} size={18} active={active} />
+                      <ModeIcon mode={item.key} size={17} active={active} />
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -538,6 +566,8 @@ export default function Nav() {
                                 ? 'rgba(56, 189, 248, 0.18)'
                                 : item.badge === 'SUB'
                                 ? 'rgba(245, 158, 11, 0.18)'
+                                : item.badge === '4K'
+                                ? 'rgba(168, 85, 247, 0.2)'
                                 : 'rgba(239, 68, 68, 0.2)',
                             color:
                               item.badge === '24H'
@@ -546,6 +576,8 @@ export default function Nav() {
                                 ? '#38bdf8'
                                 : item.badge === 'SUB'
                                 ? '#fbbf24'
+                                : item.badge === '4K'
+                                ? '#d8b4fe'
                                 : '#f87171',
                           }}
                         >
