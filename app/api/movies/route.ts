@@ -31,37 +31,57 @@ function formatSlugTitle(url: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function cleanTitleForSearch(title: string) {
+  return title
+    .replace(/\(?\d{4}\)?/g, '')
+    .replace(/sinhala subtitles?/gi, '')
+    .replace(/[-:|–].*$/, '')
+    .trim()
+}
+
+// Fast public IMDb/Amazon HD Poster lookup (never blocked, zero API key needed)
+async function fetchPublicPoster(rawTitle: string): Promise<string> {
+  try {
+    const clean = cleanTitleForSearch(rawTitle)
+    if (!clean) return ''
+    const firstChar = clean[0].toLowerCase().replace(/[^a-z0-9]/g, 'a') || 'a'
+    const slug = encodeURIComponent(clean.toLowerCase())
+    const res = await fetch(`https://v3.sg.media-imdb.com/suggestion/${firstChar}/${slug}.json`, {
+      cache: 'force-cache',
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    const hit = Array.isArray(data?.d) ? data.d.find((x: any) => x?.i?.imageUrl) : null
+    if (!hit?.i?.imageUrl) return ''
+    // Resize Amazon/IMDb poster to crisp 500px width
+    return String(hit.i.imageUrl).replace(/\._V1_.*\.jpg$/i, '._V1_UX500_.jpg')
+  } catch {
+    return ''
+  }
+}
+
 function normalizeImageUrl(raw?: string) {
   if (!raw) return ''
   let clean = raw.trim().split(/\s+/)[0].replace(/&amp;/g, '&')
   if (!clean || clean.startsWith('data:')) return ''
   if (clean.startsWith('//')) clean = `https:${clean}`
   else if (clean.startsWith('/')) clean = `${SITE}${clean}`
-  // Upgrade small WordPress thumbnail sizes (-150x225, -300x450) to higher quality if possible
-  clean = clean.replace(/-\d+x\d+(?=\.(?:jpg|jpeg|png|webp))/i, '')
   return clean
 }
 
 function extractImageFromHtml(fragment: string) {
-  const patterns = [
-    /data-lazy-src=["']([^"']+)["']/i,
-    /data-src=["']([^"']+)["']/i,
-    /data-original=["']([^"']+)["']/i,
-    /data-srcset=["']([^"']+)["']/i,
-    /srcset=["']([^"']+)["']/i,
-    /<img[^>]+src=["']([^"']+)["']/i,
-    /url\(['"]?(https?:\/\/[^'")]+)['"]?\)/i,
-  ]
+  // Prefer direct TMDB image URLs if present anywhere in HTML
+  const tmdbMatch = fragment.match(/https?:\/\/image\.tmdb\.org\/t\/p\/[^"'\s)]+\.(?:jpg|jpeg|png|webp)/i)
+  if (tmdbMatch?.[0]) return tmdbMatch[0]
 
-  for (const re of patterns) {
-    const m = fragment.match(re)
-    if (m?.[1]) {
-      const url = normalizeImageUrl(m[1])
-      if (url && !url.includes('placeholder') && !url.includes('avatar')) {
-        return url
-      }
-    }
+  const metaMatch =
+    fragment.match(/property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+    fragment.match(/content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  if (metaMatch?.[1]) {
+    const u = normalizeImageUrl(metaMatch[1])
+    if (u && !u.includes('sinhalasub.lk')) return u
   }
+
   return ''
 }
 
@@ -72,7 +92,7 @@ async function fetchHtml(url: string) {
   return await res.text()
 }
 
-function parseSearchResults(html: string, type: 'movie' | 'tv') {
+async function parseSearchResults(html: string, type: 'movie' | 'tv') {
   const results: {
     title: string
     url: string
@@ -109,7 +129,7 @@ function parseSearchResults(html: string, type: 'movie' | 'tv') {
       title: rawTitle && rawTitle.length > 1 ? rawTitle : formatSlugTitle(url),
       url,
       image,
-      year: stripTags(yearMatch?.[1] || ''),
+      year: stripTags(yearMatch?.[1] || (url.match(/\b(19\d{2}|20\d{2})\b/) || [])[1] || ''),
       rating: stripTags(rateMatch?.[1] || ''),
     })
   }
@@ -138,7 +158,17 @@ function parseSearchResults(html: string, type: 'movie' | 'tv') {
     }
   }
 
-  return results
+  // Resolve crisp HD posters in parallel for every result
+  const top = results.slice(0, 12)
+  await Promise.all(
+    top.map(async (item) => {
+      if (!item.image) {
+        item.image = await fetchPublicPoster(item.title)
+      }
+    })
+  )
+
+  return top
 }
 
 function parseDownloadLinks(html: string) {
@@ -193,13 +223,16 @@ function parseDownloadLinks(html: string) {
   return downloads
 }
 
-function parseMetaAndSeasons(html: string) {
+async function parseMetaAndSeasons(html: string, pageUrl: string) {
   const titleMatch =
     html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) ||
     html.match(/property="og:title"[^>]+content="([^"]+)"/i)
-  const ogImg = html.match(/property="og:image"[^>]+content="([^"]+)"/i)?.[1]
-  const posterBlock = html.match(/class="poster"[\s\S]*?<\/div>/i)?.[0] || ''
-  const image = normalizeImageUrl(ogImg) || extractImageFromHtml(posterBlock)
+  const title = stripTags(titleMatch?.[1] || '') || formatSlugTitle(pageUrl)
+
+  let image = extractImageFromHtml(html)
+  if (!image) {
+    image = await fetchPublicPoster(title)
+  }
 
   const descMatch =
     html.match(/property="og:description"[^>]+content="([^"]+)"/i) ||
@@ -227,7 +260,7 @@ function parseMetaAndSeasons(html: string) {
   }
 
   return {
-    title: stripTags(titleMatch?.[1] || ''),
+    title,
     image,
     description: stripTags(descMatch?.[1] || '').slice(0, 320),
     rating: stripTags(rateMatch?.[1] || ''),
@@ -240,51 +273,27 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const action = searchParams.get('action') || 'search'
-
-    // Image proxy to bypass hotlink restrictions
-    if (action === 'img') {
-      const imgUrl = searchParams.get('url') || ''
-      if (!imgUrl.startsWith('http')) {
-        return new NextResponse('Invalid image URL', { status: 400 })
-      }
-      const imgRes = await fetch(imgUrl, {
-        headers: {
-          'User-Agent': HEADERS['User-Agent'],
-          Referer: 'https://sinhalasub.lk/',
-        },
-      })
-      if (!imgRes.ok) {
-        return new NextResponse('Image fetch failed', { status: 502 })
-      }
-      const buf = await imgRes.arrayBuffer()
-      return new NextResponse(buf, {
-        headers: {
-          'Content-Type': imgRes.headers.get('content-type') || 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400',
-        },
-      })
-    }
-
     const q = (searchParams.get('q') || '').trim()
+
     if (!q) {
       return NextResponse.json({ error: 'Search query or URL required.' }, { status: 400 })
     }
 
     if (action === 'search') {
       const html = await fetchHtml(`${SITE}/?s=${encodeURIComponent(q)}`)
-      const results = parseSearchResults(html, 'movie')
+      const results = await parseSearchResults(html, 'movie')
       return NextResponse.json({ ok: true, data: { results } })
     }
 
     if (action === 'tv-search') {
       const html = await fetchHtml(`${SITE}/?s=${encodeURIComponent(q)}`)
-      const results = parseSearchResults(html, 'tv')
+      const results = await parseSearchResults(html, 'tv')
       return NextResponse.json({ ok: true, data: { results } })
     }
 
     if (action === 'infodl') {
       const html = await fetchHtml(q)
-      const meta = parseMetaAndSeasons(html)
+      const meta = await parseMetaAndSeasons(html, q)
       const downloads = parseDownloadLinks(html)
       return NextResponse.json({
         ok: true,
@@ -297,7 +306,7 @@ export async function GET(req: Request) {
 
     if (action === 'tv-info') {
       const html = await fetchHtml(q)
-      const meta = parseMetaAndSeasons(html)
+      const meta = await parseMetaAndSeasons(html, q)
       return NextResponse.json({
         ok: true,
         data: meta,
